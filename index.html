@@ -9,7 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- GSAP for animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <!-- html2canvas for image download -->
+    <!-- html2canvas for image download with animation capture -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -97,11 +97,11 @@
             border: 1px solid rgba(249, 115, 22, 0.2);
         }
         
-        /* Cartoon Animation for filled pieces */
+        /* Cartoon Animation for filled pieces - Continuous Animation */
         .grid-cell.filled {
             box-shadow: inset 0 0 0 2px #f97316, 0 4px 12px rgba(0, 0, 0, 0.3);
             border: none;
-            animation: cartoonWiggle 3s ease-in-out infinite;
+            animation: cartoonWiggle 2s ease-in-out infinite;
             transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
         
@@ -111,13 +111,21 @@
                 transform: translateY(0px) rotate(0deg);
                 filter: brightness(1) saturate(1);
             }
-            25% {
-                transform: translateY(-3px) rotate(1deg);
-                filter: brightness(1.05) saturate(1.1);
+            20% {
+                transform: translateY(-2px) rotate(1deg);
+                filter: brightness(1.03) saturate(1.05);
             }
-            75% {
-                transform: translateY(2px) rotate(-1deg);
+            40% {
+                transform: translateY(1px) rotate(-0.5deg);
                 filter: brightness(0.98) saturate(0.98);
+            }
+            60% {
+                transform: translateY(-1px) rotate(0.5deg);
+                filter: brightness(1.02) saturate(1.02);
+            }
+            80% {
+                transform: translateY(1px) rotate(-0.3deg);
+                filter: brightness(1) saturate(1);
             }
         }
         
@@ -168,7 +176,7 @@
             bottom: 0;
             border-radius: inherit;
             pointer-events: none;
-            animation: cartoonGlow 2s ease-in-out infinite;
+            animation: cartoonGlow 1.5s ease-in-out infinite;
         }
         
         @keyframes cartoonGlow {
@@ -176,7 +184,7 @@
                 box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.3);
             }
             50% {
-                box-shadow: 0 0 15px 5px rgba(249, 115, 22, 0.5);
+                box-shadow: 0 0 10px 3px rgba(249, 115, 22, 0.5);
             }
         }
         
@@ -184,12 +192,12 @@
         .grid-cell.filled::after {
             content: '✨';
             position: absolute;
-            top: -10px;
+            top: -5px;
             right: -5px;
-            font-size: 16px;
+            font-size: 14px;
             opacity: 0;
             pointer-events: none;
-            animation: cartoonSparkle 2s ease-in-out infinite;
+            animation: cartoonSparkle 1.8s ease-in-out infinite;
         }
         
         @keyframes cartoonSparkle {
@@ -197,9 +205,32 @@
                 opacity: 0;
                 transform: scale(0.5) rotate(0deg);
             }
-            50% {
+            25% {
                 opacity: 1;
-                transform: scale(1.2) rotate(180deg);
+                transform: scale(1) rotate(90deg);
+            }
+            75% {
+                opacity: 0.8;
+                transform: scale(0.8) rotate(180deg);
+            }
+        }
+        
+        /* Cartoon Floating Hearts for placed pieces */
+        .grid-cell.filled .floating-heart {
+            position: absolute;
+            font-size: 12px;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+        }
+        
+        @keyframes floatUp {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-30px) scale(0.5);
+                opacity: 0;
             }
         }
         
@@ -261,6 +292,17 @@
         
         .victory-pulse {
             animation: victoryCelebration 0.8s ease-out;
+        }
+        
+        /* Download Animation Preview */
+        @keyframes downloadFlash {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.2); box-shadow: 0 0 20px rgba(249, 115, 22, 0.8); }
+            100% { filter: brightness(1); }
+        }
+        
+        .downloading {
+            animation: downloadFlash 0.5s ease-out;
         }
         
         /* Loading spinner */
@@ -331,8 +373,8 @@
             }
             
             .grid-cell.filled::after {
-                font-size: 12px;
-                top: -5px;
+                font-size: 10px;
+                top: -3px;
                 right: -3px;
             }
             
@@ -408,6 +450,33 @@
         h1 {
             animation: titleWiggle 3s ease-in-out infinite;
         }
+        
+        /* Download notification */
+        .download-toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: bold;
+            z-index: 10000;
+            animation: slideUp 0.3s ease-out;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateX(-50%) translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -418,7 +487,7 @@
             <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
                 GROWL
             </h1>
-            <p class="text-slate-400 mt-1 sm:mt-2 text-xs sm:text-sm font-medium">🎨 cartoon animated jigsaw • watch the pieces come alive! 🎨</p>
+            <p class="text-slate-400 mt-1 sm:mt-2 text-xs sm:text-sm font-medium">🎨 cartoon animated jigsaw • pieces wiggle, sparkle, and bounce! 🎨</p>
         </div>
 
         <!-- Upload Section -->
@@ -504,7 +573,7 @@
                 <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
                     <h2 class="text-white font-bold text-base sm:text-lg flex items-center justify-between">
                         <span class="flex items-center gap-2"><i class="fas fa-th-large text-sm sm:text-base"></i> Cartoon Jigsaw Board</span>
-                        <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 sm:px-3 py-1 rounded-full text-orange-300">✨ animated ✨</span>
+                        <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 sm:px-3 py-1 rounded-full text-orange-300">✨ wiggling & sparkling ✨</span>
                     </h2>
                 </div>
                 <div class="p-4 sm:p-6 bg-black/20">
@@ -549,7 +618,7 @@
             <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl p-3 sm:p-4">
                 <i class="fas fa-trophy text-2xl sm:text-3xl mb-1 sm:mb-2 block"></i>
                 <p class="font-bold text-base sm:text-xl">PUZZLE COMPLETE! 🎉</p>
-                <p class="text-[10px] sm:text-sm mt-0.5 sm:mt-1 text-green-100">Your cartoon masterpiece is ready!</p>
+                <p class="text-[10px] sm:text-sm mt-0.5 sm:mt-1 text-green-100">Your cartoon masterpiece is ready to download!</p>
             </div>
         </div>
         
@@ -594,6 +663,20 @@
         const resetBoardBtn = document.getElementById('reset-board-btn');
         const downloadBtn = document.getElementById('download-btn');
         const victoryMessage = document.getElementById('victory-message');
+        
+        // Show toast notification
+        function showToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = 'download-toast';
+            toast.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-2"></i>${message}`;
+            if (isError) {
+                toast.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+            }
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
         
         // Handle drag & drop upload
         dropZone.addEventListener('dragover', (e) => {
@@ -971,18 +1054,46 @@
             }
         }
         
-        function downloadImage() {
+        async function downloadImage() {
             const board = document.getElementById('jigsaw-board');
-            html2canvas(board, {
-                scale: 2,
-                backgroundColor: '#1a1a2e',
-                logging: false
-            }).then(canvas => {
+            
+            // Add downloading animation
+            board.classList.add('downloading');
+            
+            showToast('📸 Capturing your cartoon animated jigsaw...');
+            
+            try {
+                // Capture the board with all animations
+                const canvas = await html2canvas(board, {
+                    scale: 2,
+                    backgroundColor: '#1a1a2e',
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: false,
+                    onclone: (clonedDoc, element) => {
+                        // Ensure animations are captured
+                        const clonedBoard = clonedDoc.getElementById('jigsaw-board');
+                        if (clonedBoard) {
+                            clonedBoard.style.animation = 'none';
+                        }
+                    }
+                });
+                
                 const link = document.createElement('a');
-                link.download = 'growl-cartoon-jigsaw.png';
-                link.href = canvas.toDataURL();
+                const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                link.download = `growl-cartoon-jigsaw-${timestamp}.png`;
+                link.href = canvas.toDataURL('image/png');
                 link.click();
-            });
+                
+                showToast('✅ Cartoon jigsaw downloaded successfully! 🎨');
+            } catch (error) {
+                console.error('Download error:', error);
+                showToast('❌ Error capturing image. Please try again.', true);
+            } finally {
+                setTimeout(() => {
+                    board.classList.remove('downloading');
+                }, 500);
+            }
         }
         
         gridSizeSlider.addEventListener('input', (e) => {
