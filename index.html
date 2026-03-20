@@ -238,11 +238,11 @@
         /* ── CARTOON FILTER on all piece images ── */
         .drag-piece img,
         .grid-cell.filled img {
-            filter: saturate(2.2) contrast(1.35) brightness(1.05);
+            filter: saturate(1.6) contrast(1.15) brightness(1.05);
             transition: filter 0.2s ease;
         }
         .drag-piece:hover img {
-            filter: saturate(2.8) contrast(1.5) brightness(1.12) hue-rotate(5deg);
+            filter: saturate(2.2) contrast(1.3) brightness(1.12) hue-rotate(8deg);
         }
     </style>
 </head>
@@ -281,7 +281,7 @@
             </div>
             <div id="loading" class="hidden mt-4 text-center">
                 <div class="loader mx-auto"></div>
-                <p class="text-slate-400 mt-2 text-xs sm:text-sm">Processing image...</p>
+                <p class="text-slate-400 mt-2 text-xs sm:text-sm">🎨 Cartooning your image...</p>
             </div>
         </div>
     </div>
@@ -473,62 +473,146 @@ removeImageBtn.addEventListener('click', () => {
     downloadBtn.disabled = true;
 });
 
-// ─── Cartoon canvas effect (posterize + edge outlines) ───
+// ─── COMIC BOOK CARTOON ENGINE ────────────────────────────
 function applyCartoonToCanvas(canvas) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
 
-    // 1. Grab pixels
-    const imageData = ctx.getImageData(0, 0, w, h);
-    const d = imageData.data;
-
-    // 2. Boost saturation (make colors pop)
-    for (let i = 0; i < d.length; i += 4) {
-        const r = d[i], g = d[i+1], b = d[i+2];
-        const gray = r * 0.299 + g * 0.587 + b * 0.114;
-        const boost = 1.7;
-        d[i]   = Math.min(255, Math.max(0, gray + (r - gray) * boost));
-        d[i+1] = Math.min(255, Math.max(0, gray + (g - gray) * boost));
-        d[i+2] = Math.min(255, Math.max(0, gray + (b - gray) * boost));
+    // ── STEP 1: Fast 5×5 box blur on source (smooth flat areas, preserve edges later)
+    function boxBlur(data, passes) {
+        const tmp = new Uint8ClampedArray(data.length);
+        for (let p = 0; p < passes; p++) {
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    let r=0,g=0,b=0,cnt=0;
+                    for (let dy=-2; dy<=2; dy++) {
+                        for (let dx=-2; dx<=2; dx++) {
+                            const nx=Math.max(0,Math.min(w-1,x+dx));
+                            const ny=Math.max(0,Math.min(h-1,y+dy));
+                            const i=(ny*w+nx)*4;
+                            r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++;
+                        }
+                    }
+                    const i=(y*w+x)*4;
+                    tmp[i]=r/cnt; tmp[i+1]=g/cnt; tmp[i+2]=b/cnt; tmp[i+3]=255;
+                }
+            }
+            data.set(tmp);
+        }
     }
 
-    // 3. Posterize (flatten colors to N tonal levels — cartoon cel-shading look)
-    const levels = 5;
-    const factor = 255 / (levels - 1);
-    for (let i = 0; i < d.length; i += 4) {
-        d[i]   = Math.round(Math.round(d[i]   / factor) * factor);
-        d[i+1] = Math.round(Math.round(d[i+1] / factor) * factor);
-        d[i+2] = Math.round(Math.round(d[i+2] / factor) * factor);
+    // Keep a copy of original for edge detection
+    const origData = ctx.getImageData(0, 0, w, h);
+    const orig = new Uint8ClampedArray(origData.data);
+
+    // Work on blurred version for color
+    const blurred = ctx.getImageData(0, 0, w, h);
+    boxBlur(blurred.data, 2);
+    const bd = blurred.data;
+
+    // ── STEP 2: Vivid saturation boost (×2.8)
+    for (let i = 0; i < bd.length; i += 4) {
+        const r=bd[i], g=bd[i+1], b=bd[i+2];
+        const gray = r*0.299 + g*0.587 + b*0.114;
+        bd[i]   = Math.min(255, Math.max(0, gray + (r-gray)*2.8));
+        bd[i+1] = Math.min(255, Math.max(0, gray + (g-gray)*2.8));
+        bd[i+2] = Math.min(255, Math.max(0, gray + (b-gray)*2.8));
     }
-    ctx.putImageData(imageData, 0, 0);
 
-    // 4. Sobel edge detection → draw dark outlines
-    const src = ctx.getImageData(0, 0, w, h);
-    const out = ctx.getImageData(0, 0, w, h);
-    const s = src.data, o = out.data;
+    // ── STEP 3: Contrast crush (S-curve approximation)
+    for (let i = 0; i < bd.length; i += 4) {
+        for (let c = 0; c < 3; c++) {
+            let v = bd[i+c] / 255;
+            // S-curve: pull darks darker, brights brighter
+            v = v < 0.5
+                ? 2*v*v
+                : 1 - Math.pow(-2*v+2, 2)/2;
+            bd[i+c] = Math.min(255, Math.max(0, Math.round(v * 255 * 1.15)));
+        }
+    }
 
-    const grayAt = (px) => s[px] * 0.299 + s[px+1] * 0.587 + s[px+2] * 0.114;
+    // ── STEP 4: Posterize to 4 flat cel-shading levels
+    const levels = 4;
+    const step = 255 / (levels - 1);
+    for (let i = 0; i < bd.length; i += 4) {
+        bd[i]   = Math.round(bd[i]   / step) * step;
+        bd[i+1] = Math.round(bd[i+1] / step) * step;
+        bd[i+2] = Math.round(bd[i+2] / step) * step;
+    }
 
-    for (let y = 1; y < h - 1; y++) {
-        for (let x = 1; x < w - 1; x++) {
-            const idx = (y * w + x) * 4;
-            const tl = grayAt(((y-1)*w+(x-1))*4), tc = grayAt(((y-1)*w+x)*4), tr = grayAt(((y-1)*w+(x+1))*4);
-            const ml = grayAt((y*w+(x-1))*4),                                   mr = grayAt((y*w+(x+1))*4);
-            const bl = grayAt(((y+1)*w+(x-1))*4), bc = grayAt(((y+1)*w+x)*4), br = grayAt(((y+1)*w+(x+1))*4);
-            const gx = -tl - 2*ml - bl + tr + 2*mr + br;
-            const gy = -tl - 2*tc - tr + bl + 2*bc + br;
-            const edge = Math.sqrt(gx*gx + gy*gy);
-            if (edge > 55) {
-                // Soft dark outline
-                const alpha = Math.min(1, (edge - 55) / 80);
-                o[idx]   = Math.round(o[idx]   * (1 - alpha * 0.85));
-                o[idx+1] = Math.round(o[idx+1] * (1 - alpha * 0.85));
-                o[idx+2] = Math.round(o[idx+2] * (1 - alpha * 0.85));
-                o[idx+3] = 255;
+    // ── STEP 5: Warm color grade (push reds/yellows, slightly reduce cyan)
+    for (let i = 0; i < bd.length; i += 4) {
+        bd[i]   = Math.min(255, bd[i]   + 12);   // warm reds
+        bd[i+1] = Math.min(255, bd[i+1] + 5);    // slight green warmth
+        bd[i+2] = Math.max(0,   bd[i+2] - 8);    // reduce cool blues
+    }
+
+    ctx.putImageData(blurred, 0, 0);
+
+    // ── STEP 6: Bold Sobel edge detection on the ORIGINAL (unblurred) image
+    //    → thick, crisp comic-book ink outlines
+    const cel = ctx.getImageData(0, 0, w, h);
+    const cd = cel.data;
+
+    const grayAt = (d, px) => d[px]*0.299 + d[px+1]*0.587 + d[px+2]*0.114;
+
+    // Build edge strength map first
+    const edgeMap = new Float32Array(w * h);
+    for (let y = 1; y < h-1; y++) {
+        for (let x = 1; x < w-1; x++) {
+            const tl=grayAt(orig,((y-1)*w+(x-1))*4), tc=grayAt(orig,((y-1)*w+x)*4), tr=grayAt(orig,((y-1)*w+(x+1))*4);
+            const ml=grayAt(orig,(y*w+(x-1))*4),                                      mr=grayAt(orig,(y*w+(x+1))*4);
+            const bl=grayAt(orig,((y+1)*w+(x-1))*4), bc=grayAt(orig,((y+1)*w+x)*4), br2=grayAt(orig,((y+1)*w+(x+1))*4);
+            const gx = -tl - 2*ml - bl + tr + 2*mr + br2;
+            const gy = -tl - 2*tc - tr + bl + 2*bc + br2;
+            edgeMap[y*w+x] = Math.sqrt(gx*gx + gy*gy);
+        }
+    }
+
+    // Dilate edges by 1px for thick ink look
+    const threshold = 28;
+    for (let y = 1; y < h-1; y++) {
+        for (let x = 1; x < w-1; x++) {
+            // Check 3×3 neighbourhood for any strong edge
+            let maxEdge = edgeMap[y*w+x];
+            for (let dy=-1; dy<=1; dy++)
+                for (let dx=-1; dx<=1; dx++)
+                    maxEdge = Math.max(maxEdge, edgeMap[(y+dy)*w+(x+dx)]);
+
+            if (maxEdge > threshold) {
+                const idx = (y*w+x)*4;
+                const strength = Math.min(1, (maxEdge - threshold) / 100);
+                // Ink: pure dark (slight warm dark, not pure black — more comic-y)
+                cd[idx]   = Math.round(cd[idx]   * (1 - strength * 0.92) + 10 * strength);
+                cd[idx+1] = Math.round(cd[idx+1] * (1 - strength * 0.92) + 6  * strength);
+                cd[idx+2] = Math.round(cd[idx+2] * (1 - strength * 0.92) + 4  * strength);
+                cd[idx+3] = 255;
             }
         }
     }
-    ctx.putImageData(out, 0, 0);
+    ctx.putImageData(cel, 0, 0);
+
+    // ── STEP 7: Subtle halftone dot highlight layer (vintage comic feel)
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.globalAlpha = 0.07;
+    const dotSpacing = 8;
+    ctx.fillStyle = '#ffffff';
+    for (let y = 0; y < h; y += dotSpacing) {
+        for (let x = (y/dotSpacing % 2 === 0 ? 0 : dotSpacing/2); x < w; x += dotSpacing) {
+            ctx.beginPath();
+            ctx.arc(x, y, 1.8, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+
+    // ── STEP 8: Vignette (darken corners — adds drama)
+    const vig = ctx.createRadialGradient(w/2, h/2, h*0.3, w/2, h/2, h*0.85);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.28)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, w, h);
 }
 
 // ─── Process image to 600×600 with cartoon effect ─────────
