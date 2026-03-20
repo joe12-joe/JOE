@@ -86,7 +86,7 @@
             transform: scale(0.95);
         }
         
-        /* Jigsaw grid cells */
+        /* Jigsaw grid cells - Cartoon Animated */
         .grid-cell {
             transition: all 0.2s ease;
             cursor: pointer;
@@ -97,13 +97,110 @@
             border: 1px solid rgba(249, 115, 22, 0.2);
         }
         
-        .grid-cell:active {
-            transform: scale(0.98);
-        }
-        
+        /* Cartoon Animation for filled pieces */
         .grid-cell.filled {
             box-shadow: inset 0 0 0 2px #f97316, 0 4px 12px rgba(0, 0, 0, 0.3);
             border: none;
+            animation: cartoonWiggle 3s ease-in-out infinite;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        /* Cartoon Wiggle Animation */
+        @keyframes cartoonWiggle {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+                filter: brightness(1) saturate(1);
+            }
+            25% {
+                transform: translateY(-3px) rotate(1deg);
+                filter: brightness(1.05) saturate(1.1);
+            }
+            75% {
+                transform: translateY(2px) rotate(-1deg);
+                filter: brightness(0.98) saturate(0.98);
+            }
+        }
+        
+        /* Cartoon Pop when placed */
+        .grid-cell.placed {
+            animation: cartoonPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
+        }
+        
+        @keyframes cartoonPop {
+            0% {
+                transform: scale(0.2) rotate(-180deg);
+                opacity: 0;
+                filter: brightness(0) saturate(0) blur(5px);
+            }
+            30% {
+                transform: scale(1.2) rotate(10deg);
+                filter: brightness(1.5) saturate(2) hue-rotate(15deg);
+            }
+            60% {
+                transform: scale(0.95) rotate(-3deg);
+                filter: brightness(1.2) saturate(1.3);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+                filter: brightness(1) saturate(1) blur(0);
+            }
+        }
+        
+        /* Cartoon Hover Effect */
+        .grid-cell.filled:hover {
+            animation: cartoonBounce 0.4s ease-in-out;
+            cursor: pointer;
+        }
+        
+        @keyframes cartoonBounce {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-8px) scale(1.05); filter: brightness(1.2); }
+        }
+        
+        /* Cartoon Glow Effect */
+        .grid-cell.filled::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            animation: cartoonGlow 2s ease-in-out infinite;
+        }
+        
+        @keyframes cartoonGlow {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 15px 5px rgba(249, 115, 22, 0.5);
+            }
+        }
+        
+        /* Cartoon Sparkle Effect */
+        .grid-cell.filled::after {
+            content: '✨';
+            position: absolute;
+            top: -10px;
+            right: -5px;
+            font-size: 16px;
+            opacity: 0;
+            pointer-events: none;
+            animation: cartoonSparkle 2s ease-in-out infinite;
+        }
+        
+        @keyframes cartoonSparkle {
+            0%, 100% {
+                opacity: 0;
+                transform: scale(0.5) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2) rotate(180deg);
+            }
         }
         
         .grid-cell.empty {
@@ -113,88 +210,57 @@
         }
         
         .grid-cell.empty::after {
-            content: '';
+            content: '?';
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 30px;
-            height: 30px;
-            background: rgba(249, 115, 22, 0.2);
-            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            color: rgba(249, 115, 22, 0.4);
             transition: all 0.3s ease;
+            animation: cartoonQuestion 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes cartoonQuestion {
+            0%, 100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.5;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.2);
+                opacity: 1;
+                color: rgba(249, 115, 22, 0.8);
+            }
         }
         
         .grid-cell.empty:hover::after {
-            background: rgba(249, 115, 22, 0.4);
-            width: 40px;
-            height: 40px;
-        }
-        
-        /* Cartoon Animation Styles */
-        .grid-cell.placed {
-            animation: cartoonPop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
-        }
-        
-        @keyframes cartoonPop {
-            0% {
-                transform: scale(0.2) rotate(-180deg);
-                opacity: 0;
-                filter: brightness(0) saturate(0);
-            }
-            50% {
-                transform: scale(1.1) rotate(5deg);
-                filter: brightness(1.3) saturate(1.5) hue-rotate(5deg);
-            }
-            75% {
-                transform: scale(0.95) rotate(-2deg);
-                filter: brightness(1.1) saturate(1.2);
-            }
-            100% {
-                transform: scale(1) rotate(0deg);
-                opacity: 1;
-                filter: brightness(1) saturate(1);
-            }
-        }
-        
-        /* Bounce animation for piece removal */
-        @keyframes cartoonBounceOut {
-            0% {
-                transform: scale(1) rotate(0deg);
-                opacity: 1;
-            }
-            100% {
-                transform: scale(0) rotate(180deg);
-                opacity: 0;
-            }
-        }
-        
-        .piece-removing {
-            animation: cartoonBounceOut 0.3s ease-out forwards !important;
+            transform: translate(-50%, -50%) scale(1.3);
+            color: rgba(249, 115, 22, 0.9);
         }
         
         /* Shuffle animation */
         @keyframes shuffleAnim {
-            0% { transform: rotate(0deg) scale(1); }
-            25% { transform: rotate(5deg) scale(1.05); filter: hue-rotate(0deg); }
-            75% { transform: rotate(-5deg) scale(1.05); filter: hue-rotate(360deg); }
-            100% { transform: rotate(0deg) scale(1); filter: hue-rotate(0deg); }
+            0% { transform: rotate(0deg) scale(1); filter: hue-rotate(0deg); }
+            25% { transform: rotate(5deg) scale(1.05); filter: hue-rotate(90deg); }
+            75% { transform: rotate(-5deg) scale(1.05); filter: hue-rotate(270deg); }
+            100% { transform: rotate(0deg) scale(1); filter: hue-rotate(360deg); }
         }
         
         .shuffling {
-            animation: shuffleAnim 0.5s ease-in-out;
+            animation: shuffleAnim 0.6s ease-in-out;
         }
         
         /* Victory animation */
         @keyframes victoryCelebration {
             0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
-            25% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(249, 115, 22, 0.3); filter: brightness(1.2); }
-            50% { transform: scale(1.1); box-shadow: 0 0 0 25px rgba(249, 115, 22, 0); filter: brightness(1.3); }
+            25% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(249, 115, 22, 0.3); filter: brightness(1.2) hue-rotate(0deg); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 25px rgba(249, 115, 22, 0); filter: brightness(1.3) hue-rotate(360deg); }
             75% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(249, 115, 22, 0.2); }
         }
         
         .victory-pulse {
-            animation: victoryCelebration 0.6s ease-out;
+            animation: victoryCelebration 0.8s ease-out;
         }
         
         /* Loading spinner */
@@ -242,11 +308,10 @@
         
         /* Touch device optimizations */
         @media (hover: hover) {
-            .grid-cell:hover {
+            .grid-cell.filled:hover {
                 transform: scale(1.02);
                 filter: brightness(1.1);
                 z-index: 10;
-                border-color: #f97316;
             }
             
             .drag-piece:hover {
@@ -262,24 +327,17 @@
             }
             
             .grid-cell.empty::after {
-                width: 20px;
-                height: 20px;
+                font-size: 16px;
             }
             
-            .grid-cell.empty:hover::after {
-                width: 28px;
-                height: 28px;
+            .grid-cell.filled::after {
+                font-size: 12px;
+                top: -5px;
+                right: -3px;
             }
             
             button, .drag-piece, .grid-cell {
                 cursor: default !important;
-            }
-        }
-        
-        /* Tablet optimizations */
-        @media (min-width: 769px) and (max-width: 1024px) {
-            .pieces-container {
-                max-height: 350px;
             }
         }
         
@@ -327,17 +385,7 @@
             box-shadow: 0 8px 20px rgba(249, 115, 22, 0.3);
         }
         
-        .btn-secondary {
-            background: linear-gradient(135deg, #475569, #334155);
-            transition: all 0.3s ease;
-        }
-        
-        .btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-        }
-        
-        /* Two column layout for main game area */
+        /* Two column layout */
         .game-area {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -351,14 +399,14 @@
             }
         }
         
-        /* Floating animation for empty cells */
-        @keyframes floatHint {
+        /* Cartoon Title Animation */
+        @keyframes titleWiggle {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-5px); }
         }
         
-        .grid-cell.empty::after {
-            animation: floatHint 2s ease-in-out infinite;
+        h1 {
+            animation: titleWiggle 3s ease-in-out infinite;
         }
     </style>
 </head>
@@ -370,7 +418,7 @@
             <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
                 GROWL
             </h1>
-            <p class="text-slate-400 mt-1 sm:mt-2 text-xs sm:text-sm font-medium">✨ cartoon animated puzzle • drag & drop with magical effects ✨</p>
+            <p class="text-slate-400 mt-1 sm:mt-2 text-xs sm:text-sm font-medium">🎨 cartoon animated jigsaw • watch the pieces come alive! 🎨</p>
         </div>
 
         <!-- Upload Section -->
@@ -434,10 +482,10 @@
             </div>
         </div>
 
-        <!-- Main Game Area - Puzzle Pieces vs Jigsaw Board -->
+        <!-- Main Game Area -->
         <div class="game-area">
             
-            <!-- LEFT SIDE: Puzzle Pieces Container -->
+            <!-- LEFT SIDE: Puzzle Pieces -->
             <div id="pieces-card" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
                 <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
                     <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
@@ -451,12 +499,12 @@
                 </div>
             </div>
             
-            <!-- RIGHT SIDE: Jigsaw Board -->
+            <!-- RIGHT SIDE: Cartoon Animated Jigsaw Board -->
             <div id="board-card" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
                 <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
                     <h2 class="text-white font-bold text-base sm:text-lg flex items-center justify-between">
-                        <span class="flex items-center gap-2"><i class="fas fa-th-large text-sm sm:text-base"></i> Jigsaw Board</span>
-                        <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 sm:px-3 py-1 rounded-full text-orange-300">drop here → cartoon animation!</span>
+                        <span class="flex items-center gap-2"><i class="fas fa-th-large text-sm sm:text-base"></i> Cartoon Jigsaw Board</span>
+                        <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 sm:px-3 py-1 rounded-full text-orange-300">✨ animated ✨</span>
                     </h2>
                 </div>
                 <div class="p-4 sm:p-6 bg-black/20">
@@ -484,10 +532,10 @@
                 </div>
                 <div class="flex gap-2 sm:gap-3">
                     <button id="shuffle-pieces-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
-                        <i class="fas fa-random mr-1 sm:mr-2 text-xs sm:text-sm"></i>Shuffle Pieces
+                        <i class="fas fa-random mr-1 sm:mr-2 text-xs sm:text-sm"></i>Shuffle
                     </button>
                     <button id="reset-board-btn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
-                        <i class="fas fa-sync-alt mr-1 sm:mr-2 text-xs sm:text-sm"></i>Reset Board
+                        <i class="fas fa-sync-alt mr-1 sm:mr-2 text-xs sm:text-sm"></i>Reset
                     </button>
                     <button id="download-btn" class="flex-1 btn-primary text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm touch-feedback" disabled>
                         <i class="fas fa-download mr-1 sm:mr-2 text-xs sm:text-sm"></i>Download
@@ -501,13 +549,13 @@
             <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl p-3 sm:p-4">
                 <i class="fas fa-trophy text-2xl sm:text-3xl mb-1 sm:mb-2 block"></i>
                 <p class="font-bold text-base sm:text-xl">PUZZLE COMPLETE! 🎉</p>
-                <p class="text-[10px] sm:text-sm mt-0.5 sm:mt-1 text-green-100">Click download to save your masterpiece</p>
+                <p class="text-[10px] sm:text-sm mt-0.5 sm:mt-1 text-green-100">Your cartoon masterpiece is ready!</p>
             </div>
         </div>
         
         <!-- Footer -->
         <div class="text-center mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-orange-500/20">
-            <p class="text-slate-500 text-[10px] sm:text-xs">GROWL • cartoon animated jigsaw • watch the magical pop animation when placing pieces!</p>
+            <p class="text-slate-500 text-[10px] sm:text-xs">GROWL • cartoon animated jigsaw • pieces wiggle, sparkle, and bounce with cartoon magic!</p>
         </div>
     </div>
 
@@ -663,7 +711,6 @@
                         totalPiecesSpan.textContent = totalPieces;
                         updatePlacedCount();
                         
-                        // Animate entrance
                         gsap.fromTo('#pieces-card', 
                             { x: -50, opacity: 0 },
                             { x: 0, opacity: 1, duration: 0.5, ease: 'backOut' }
@@ -794,19 +841,14 @@
                 renderPieces();
                 renderBoard();
                 
-                // Add cartoon animation to the placed cell
                 const cells = document.querySelectorAll('.grid-cell');
                 const index = row * gridSize + col;
                 if (cells[index]) {
                     cells[index].classList.add('placed');
-                    
-                    // Create particle effect for extra cartoon magic
-                    createParticleEffect(cells[index]);
-                    
-                    // Play pop sound effect (visual only - browser safe)
+                    createCartoonEffect(cells[index]);
                     setTimeout(() => {
                         cells[index].classList.remove('placed');
-                    }, 500);
+                    }, 600);
                 }
                 
                 checkVictory();
@@ -815,16 +857,15 @@
             return false;
         }
         
-        // Create particle effect for cartoon animation
-        function createParticleEffect(element) {
+        function createCartoonEffect(element) {
             const rect = element.getBoundingClientRect();
-            const colors = ['#f97316', '#ea580c', '#f59e0b', '#eab308', '#ff6b6b', '#4ecdc4'];
+            const colors = ['#f97316', '#ea580c', '#f59e0b', '#eab308', '#ff6b6b', '#4ecdc4', '#a855f7', '#06b6d4'];
             
-            for (let i = 0; i < 12; i++) {
+            for (let i = 0; i < 15; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'fixed pointer-events-none';
-                particle.style.width = '8px';
-                particle.style.height = '8px';
+                particle.style.width = '10px';
+                particle.style.height = '10px';
                 particle.style.borderRadius = '50%';
                 particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
                 particle.style.left = rect.left + rect.width / 2 + 'px';
@@ -833,9 +874,9 @@
                 particle.style.zIndex = '9999';
                 document.body.appendChild(particle);
                 
-                const angle = (i / 12) * Math.PI * 2;
-                const velocityX = Math.cos(angle) * (Math.random() * 100 + 50);
-                const velocityY = Math.sin(angle) * (Math.random() * 100 + 50);
+                const angle = (i / 15) * Math.PI * 2;
+                const velocityX = Math.cos(angle) * (Math.random() * 120 + 60);
+                const velocityY = Math.sin(angle) * (Math.random() * 120 + 60);
                 
                 gsap.to(particle, {
                     x: velocityX,
@@ -843,7 +884,7 @@
                     rotation: Math.random() * 360,
                     opacity: 0,
                     scale: 0,
-                    duration: 0.6,
+                    duration: 0.8,
                     ease: 'power2.out',
                     onComplete: () => particle.remove()
                 });
@@ -859,7 +900,7 @@
             
             const container = document.getElementById('pieces-container');
             container.classList.add('shuffling');
-            setTimeout(() => container.classList.remove('shuffling'), 500);
+            setTimeout(() => container.classList.remove('shuffling'), 600);
             
             renderPieces();
             renderBoard();
@@ -902,14 +943,14 @@
                 
                 const board = document.getElementById('jigsaw-board');
                 board.classList.add('victory-pulse');
-                setTimeout(() => board.classList.remove('victory-pulse'), 600);
+                setTimeout(() => board.classList.remove('victory-pulse'), 800);
                 confettiEffect();
             }
         }
         
         function confettiEffect() {
             const colors = ['#f97316', '#ea580c', '#f59e0b', '#eab308', '#ff6b6b', '#4ecdc4', '#a855f7'];
-            for (let i = 0; i < 80; i++) {
+            for (let i = 0; i < 100; i++) {
                 const confetti = document.createElement('div');
                 confetti.className = 'fixed w-2 sm:w-3 h-2 sm:h-3 rounded-full pointer-events-none';
                 confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
@@ -938,7 +979,7 @@
                 logging: false
             }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = 'growl-jigsaw-solution.png';
+                link.download = 'growl-cartoon-jigsaw.png';
                 link.href = canvas.toDataURL();
                 link.click();
             });
