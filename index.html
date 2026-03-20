@@ -2,54 +2,891 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cartoon Photo Puzzle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>GROWL - Shuffle Jigsaw Puzzle</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- GSAP for animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <!-- html2canvas for image download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #f0f2f5; }
-        h1 { color: #333; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
         
-        #puzzle-board {
-            display: grid;
-            grid-template-columns: repeat(3, 120px);
-            grid-template-rows: repeat(3, 120px);
-            gap: 5px;
-            width: 370px;
-            margin: 20px auto;
-            background: #fff;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        * {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
-
-        .piece {
-            width: 120px;
-            height: 120px;
-            background-image: url('https://picsum.photos/id/1084/400/400?grayscale'); /* Example Image */
-            background-size: 360px 360px; /* 3 times the piece size */
+        
+        body {
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+        }
+        
+        /* Drag and drop zones */
+        .drop-zone {
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+        
+        .drop-zone:hover {
+            border-color: #f97316;
+            background: rgba(249, 115, 22, 0.1);
+        }
+        
+        .drop-zone.drag-over {
+            border-color: #f97316;
+            background: rgba(249, 115, 22, 0.15);
+            transform: scale(1.02);
+        }
+        
+        /* Puzzle pieces container */
+        .pieces-container {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .pieces-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .pieces-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        
+        .pieces-container::-webkit-scrollbar-thumb {
+            background: #f97316;
+            border-radius: 10px;
+        }
+        
+        /* Draggable puzzle pieces */
+        .drag-piece {
+            cursor: grab;
+            transition: all 0.2s ease;
+            user-select: none;
+            touch-action: manipulation;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        
+        .drag-piece:active {
+            cursor: grabbing;
+        }
+        
+        .drag-piece.dragging {
+            opacity: 0.6;
+            cursor: grabbing;
+            transform: scale(0.95);
+        }
+        
+        /* Jigsaw grid cells */
+        .grid-cell {
+            transition: all 0.2s ease;
             cursor: pointer;
-            border-radius: 4px;
-            transition: transform 0.2s, border 0.2s;
+            position: relative;
+            overflow: hidden;
+            touch-action: manipulation;
+            background: rgba(30, 30, 46, 0.8);
+            border: 1px solid rgba(249, 115, 22, 0.2);
         }
-
-        .piece:hover { transform: scale(1.02); z-index: 10; border: 2px solid #007bff; }
-        .selected { border: 3px solid #ff4757; transform: scale(1.05); }
         
-        button {
-            padding: 10px 25px;
-            font-size: 16px;
-            background: #28a745;
-            color: white;
+        .grid-cell:active {
+            transform: scale(0.98);
+        }
+        
+        .grid-cell.filled {
+            box-shadow: inset 0 0 0 2px #f97316, 0 4px 12px rgba(0, 0, 0, 0.3);
             border: none;
+        }
+        
+        .grid-cell.empty {
+            background: linear-gradient(135deg, rgba(30, 30, 46, 0.6) 0%, rgba(20, 20, 35, 0.8) 100%);
+            border: 2px dashed rgba(249, 115, 22, 0.4);
+            position: relative;
+        }
+        
+        .grid-cell.empty::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            background: rgba(249, 115, 22, 0.2);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .grid-cell.empty:hover::after {
+            background: rgba(249, 115, 22, 0.4);
+            width: 40px;
+            height: 40px;
+        }
+        
+        .grid-cell.placed {
+            animation: placePiece 0.3s ease-out;
+        }
+        
+        @keyframes placePiece {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        /* Shuffle animation */
+        @keyframes shuffleAnim {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(5deg) scale(1.05); }
+            75% { transform: rotate(-5deg) scale(1.05); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+        
+        .shuffling {
+            animation: shuffleAnim 0.3s ease-in-out;
+        }
+        
+        /* Victory animation */
+        @keyframes victoryPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+            50% { transform: scale(1.02); box-shadow: 0 0 0 20px rgba(249, 115, 22, 0); }
+        }
+        
+        .victory-pulse {
+            animation: victoryPulse 0.5s ease-out;
+        }
+        
+        /* Loading spinner */
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-bottom-color: #f97316;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Grid size slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 5px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #f97316;
+            border-radius: 50%;
             cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #ea580c;
+        }
+        
+        /* Touch device optimizations */
+        @media (hover: hover) {
+            .grid-cell:hover {
+                transform: scale(1.02);
+                filter: brightness(1.1);
+                z-index: 10;
+                border-color: #f97316;
+            }
+            
+            .drag-piece:hover {
+                transform: scale(1.05);
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            }
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .pieces-container {
+                max-height: 280px;
+            }
+            
+            .grid-cell.empty::after {
+                width: 20px;
+                height: 20px;
+            }
+            
+            .grid-cell.empty:hover::after {
+                width: 28px;
+                height: 28px;
+            }
+            
+            button, .drag-piece, .grid-cell {
+                cursor: default !important;
+            }
+        }
+        
+        /* Tablet optimizations */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .pieces-container {
+                max-height: 350px;
+            }
+        }
+        
+        /* Desktop optimizations */
+        @media (min-width: 1025px) {
+            .pieces-container {
+                max-height: 500px;
+            }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #f97316;
+            border-radius: 10px;
+        }
+        
+        /* Touch feedback */
+        .touch-feedback {
+            transition: all 0.1s ease;
+        }
+        
+        .touch-feedback:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+        
+        /* Card styles - Dark theme */
+        .dark-card {
+            background: rgba(26, 26, 46, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+        }
+        
+        /* Button styles */
+        .btn-primary {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(249, 115, 22, 0.3);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #475569, #334155);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Smooth transitions */
+        * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
     </style>
 </head>
-<body>
+<body class="min-h-screen">
+    <div class="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 max-w-full lg:max-w-7xl">
+        
+        <!-- Header with GROWL -->
+        <div class="text-center mb-6 sm:mb-8">
+            <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
+                GROWL
+            </h1>
+            <p class="text-slate-400 mt-1 sm:mt-2 text-xs sm:text-sm font-medium">shuffle & solve the jigsaw puzzle</p>
+        </div>
 
-    <h1>Cartoon Animation Puzzle</h1>
-    <div id="puzzle-board"></div>
-    <br>
-    <button onclick="shuffle()">Shuffle Pieces</button>
+        <!-- Main Grid Layout -->
+        <div class="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:gap-8">
+            
+            <!-- Left Column - Upload & Puzzle Pieces -->
+            <div class="space-y-4 sm:space-y-6 order-2 lg:order-1">
+                
+                <!-- Upload Card -->
+                <div class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20">
+                    <div class="bg-gradient-to-r from-orange-600 to-orange-500 px-4 sm:px-6 py-3 sm:py-4">
+                        <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                            <i class="fas fa-cloud-upload-alt text-sm sm:text-base"></i>
+                            <span>Upload Your Image</span>
+                        </h2>
+                    </div>
+                    <div class="p-4 sm:p-6">
+                        <div id="drop-zone" class="drop-zone border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all">
+                            <i class="fas fa-image text-3xl sm:text-4xl md:text-5xl text-orange-500 mb-2 sm:mb-3 block"></i>
+                            <span class="text-slate-300 font-medium block mb-1 text-sm sm:text-base">Drag & drop your image here</span>
+                            <span class="text-slate-500 text-xs sm:text-sm">or click to browse</span>
+                            <input type="file" id="photo-upload" class="hidden" accept="image/jpeg, image/png, image/jpg">
+                        </div>
+                        
+                        <!-- Preview Section -->
+                        <div id="preview-container" class="mt-4 sm:mt-6 hidden">
+                            <div class="relative rounded-xl overflow-hidden bg-black/50">
+                                <img id="preview" class="w-full h-auto max-h-32 sm:max-h-48 object-contain" alt="Preview">
+                                <button id="remove-image" class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-red-700 transition shadow-lg">
+                                    <i class="fas fa-times text-xs sm:text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Loading Indicator -->
+                        <div id="loading" class="hidden mt-4 text-center">
+                            <div class="loader mx-auto"></div>
+                            <p class="text-slate-400 mt-2 text-xs sm:text-sm">Processing image...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Grid Size Control -->
+                <div id="grid-control" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
+                    <div class="bg-gradient-to-r from-purple-600 to-pink-600 px-4 sm:px-6 py-3 sm:py-4">
+                        <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                            <i class="fas fa-th text-sm sm:text-base"></i>
+                            <span>Puzzle Grid Size</span>
+                        </h2>
+                    </div>
+                    <div class="p-4 sm:p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-slate-300 font-medium text-sm sm:text-base">Grid: <span id="grid-size-value" class="text-orange-500 font-bold">3</span> x <span id="grid-size-value-2" class="text-orange-500 font-bold">3</span></span>
+                            <span class="text-slate-500 text-xs">(more pieces = harder)</span>
+                        </div>
+                        <input type="range" id="grid-size-slider" min="2" max="6" value="3" step="1" class="w-full">
+                        <div class="flex justify-between text-[10px] sm:text-xs text-slate-500 mt-2">
+                            <span>2x2</span>
+                            <span>3x3</span>
+                            <span>4x4</span>
+                            <span>5x5</span>
+                            <span>6x6</span>
+                        </div>
+                        <button id="apply-grid-btn" class="mt-4 w-full btn-primary text-white rounded-xl px-4 py-2 sm:py-2.5 font-semibold transition text-sm sm:text-base">
+                            <i class="fas fa-cogs mr-2"></i>Apply New Grid
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Puzzle Pieces Container -->
+                <div id="pieces-card" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
+                    <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
+                        <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                            <i class="fas fa-puzzle-piece text-sm sm:text-base"></i>
+                            <span>Puzzle Pieces</span>
+                            <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 py-0.5 sm:py-1 rounded-full ml-2 text-orange-300">drag to jigsaw</span>
+                        </h2>
+                    </div>
+                    <div id="pieces-container" class="pieces-container p-4 sm:p-6">
+                        <div id="pieces-grid" class="grid gap-2 sm:gap-3"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column - Jigsaw Board -->
+            <div class="order-1 lg:order-2 lg:sticky lg:top-6">
+                <div class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20">
+                    <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
+                        <h2 class="text-white font-bold text-base sm:text-lg flex items-center justify-between">
+                            <span class="flex items-center gap-2"><i class="fas fa-th-large text-sm sm:text-base"></i> Jigsaw Board</span>
+                            <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 sm:px-3 py-1 rounded-full text-orange-300">drop pieces here</span>
+                        </h2>
+                    </div>
+                    <div class="p-4 sm:p-6 bg-black/20">
+                        <div id="jigsaw-board" class="grid gap-1.5 sm:gap-2 max-w-full mx-auto aspect-square"></div>
+                        
+                        <!-- Game Stats & Controls -->
+                        <div id="game-stats" class="mt-4 sm:mt-6 hidden">
+                            <div class="bg-black/30 rounded-xl p-3 sm:p-4 border border-orange-500/20">
+                                <div class="flex justify-between items-center mb-3 sm:mb-4">
+                                    <div class="text-center flex-1">
+                                        <p class="text-slate-400 text-[10px] sm:text-xs font-medium">PIECES PLACED</p>
+                                        <p id="placed-count" class="text-xl sm:text-2xl font-bold text-orange-500">0</p>
+                                    </div>
+                                    <div class="text-center flex-1 border-l border-r border-orange-500/20">
+                                        <p class="text-slate-400 text-[10px] sm:text-xs font-medium">TOTAL PIECES</p>
+                                        <p id="total-pieces" class="text-xl sm:text-2xl font-bold text-slate-300">0</p>
+                                    </div>
+                                    <div class="text-center flex-1">
+                                        <p class="text-slate-400 text-[10px] sm:text-xs font-medium">STATUS</p>
+                                        <p id="game-status" class="text-xs sm:text-sm font-semibold text-slate-300">Playing</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 sm:gap-3">
+                                    <button id="shuffle-pieces-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
+                                        <i class="fas fa-random mr-1 sm:mr-2 text-xs sm:text-sm"></i>Shuffle
+                                    </button>
+                                    <button id="reset-board-btn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
+                                        <i class="fas fa-sync-alt mr-1 sm:mr-2 text-xs sm:text-sm"></i>Reset
+                                    </button>
+                                    <button id="download-btn" class="flex-1 btn-primary text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm touch-feedback" disabled>
+                                        <i class="fas fa-download mr-1 sm:mr-2 text-xs sm:text-sm"></i>Download
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Victory Message -->
+                        <div id="victory-message" class="hidden mt-4 sm:mt-6 text-center">
+                            <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl p-3 sm:p-4">
+                                <i class="fas fa-trophy text-2xl sm:text-3xl mb-1 sm:mb-2 block"></i>
+                                <p class="font-bold text-base sm:text-xl">PUZZLE COMPLETE!</p>
+                                <p class="text-[10px] sm:text-sm mt-0.5 sm:mt-1 text-green-100">Click download to save your masterpiece</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-orange-500/20">
+            <p class="text-slate-500 text-[10px] sm:text-xs">GROWL • shuffle & solve • drag pieces to complete the jigsaw</p>
+        </div>
+    </div>
 
+    <script>
+        // Game State
+        let originalImageUrl = null;
+        let processedImageUrl = null;
+        let gridSize = 3;
+        let totalPieces = 9;
+        let pieces = [];
+        let boardState = [];
+        let draggedPiece = null;
+        let shuffledPieces = []; // Store shuffled order of pieces
+        
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const photoUpload = document.getElementById('photo-upload');
+        const preview = document.getElementById('preview');
+        const previewContainer = document.getElementById('preview-container');
+        const removeImageBtn = document.getElementById('remove-image');
+        const loadingDiv = document.getElementById('loading');
+        const gridControl = document.getElementById('grid-control');
+        const piecesCard = document.getElementById('pieces-card');
+        const gameStats = document.getElementById('game-stats');
+        const gridSizeSlider = document.getElementById('grid-size-slider');
+        const gridSizeValue = document.getElementById('grid-size-value');
+        const gridSizeValue2 = document.getElementById('grid-size-value-2');
+        const applyGridBtn = document.getElementById('apply-grid-btn');
+        const piecesGrid = document.getElementById('pieces-grid');
+        const jigsawBoard = document.getElementById('jigsaw-board');
+        const placedCountSpan = document.getElementById('placed-count');
+        const totalPiecesSpan = document.getElementById('total-pieces');
+        const gameStatus = document.getElementById('game-status');
+        const shufflePiecesBtn = document.getElementById('shuffle-pieces-btn');
+        const resetBoardBtn = document.getElementById('reset-board-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const victoryMessage = document.getElementById('victory-message');
+        
+        // Handle drag & drop upload
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImageUpload(file);
+            }
+        });
+        
+        dropZone.addEventListener('click', () => {
+            photoUpload.click();
+        });
+        
+        photoUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImageUpload(file);
+            }
+        });
+        
+        function handleImageUpload(file) {
+            const reader = new FileReader();
+            loadingDiv.classList.remove('hidden');
+            reader.onload = function(event) {
+                originalImageUrl = event.target.result;
+                preview.src = originalImageUrl;
+                previewContainer.classList.remove('hidden');
+                loadingDiv.classList.add('hidden');
+                gridControl.classList.remove('hidden');
+                processImage();
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        removeImageBtn.addEventListener('click', () => {
+            originalImageUrl = null;
+            processedImageUrl = null;
+            previewContainer.classList.add('hidden');
+            gridControl.classList.add('hidden');
+            piecesCard.classList.add('hidden');
+            gameStats.classList.add('hidden');
+            photoUpload.value = '';
+            piecesGrid.innerHTML = '';
+            jigsawBoard.innerHTML = '';
+            victoryMessage.classList.add('hidden');
+            downloadBtn.disabled = true;
+        });
+        
+        function processImage() {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 600;
+                canvas.height = 600;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, 600, 600);
+                processedImageUrl = canvas.toDataURL();
+                createPuzzle();
+            };
+            img.src = originalImageUrl;
+        }
+        
+        function createPuzzle() {
+            if (!processedImageUrl) return;
+            
+            totalPieces = gridSize * gridSize;
+            pieces = [];
+            boardState = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+            
+            const pieceWidth = 600 / gridSize;
+            const pieceHeight = 600 / gridSize;
+            
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    pieces.push({
+                        id: row * gridSize + col,
+                        row: row,
+                        col: col,
+                        imageData: null,
+                        placed: false
+                    });
+                }
+            }
+            
+            let loadedCount = 0;
+            pieces.forEach(piece => {
+                const canvas = document.createElement('canvas');
+                canvas.width = pieceWidth;
+                canvas.height = pieceHeight;
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.onload = function() {
+                    ctx.drawImage(img, -piece.col * pieceWidth, -piece.row * pieceHeight, 600, 600);
+                    piece.imageData = canvas.toDataURL();
+                    loadedCount++;
+                    if (loadedCount === totalPieces) {
+                        // Shuffle pieces before displaying
+                        shufflePiecesArray();
+                        renderPieces();
+                        renderBoard();
+                        piecesCard.classList.remove('hidden');
+                        gameStats.classList.remove('hidden');
+                        totalPiecesSpan.textContent = totalPieces;
+                        updatePlacedCount();
+                    }
+                };
+                img.src = processedImageUrl;
+            });
+        }
+        
+        function shufflePiecesArray() {
+            // Create array of piece indices and shuffle
+            const pieceIndices = pieces.map((_, index) => index);
+            for (let i = pieceIndices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pieceIndices[i], pieceIndices[j]] = [pieceIndices[j], pieceIndices[i]];
+            }
+            shuffledPieces = pieceIndices;
+        }
+        
+        function renderPieces() {
+            piecesGrid.innerHTML = '';
+            const cols = Math.min(gridSize, window.innerWidth < 640 ? 3 : 4);
+            piecesGrid.style.gridTemplateColumns = `repeat(${cols}, minmax(70px, 1fr))`;
+            
+            // Display pieces in shuffled order
+            for (let idx of shuffledPieces) {
+                const piece = pieces[idx];
+                if (!piece.placed) {
+                    const pieceDiv = document.createElement('div');
+                    pieceDiv.className = 'drag-piece rounded-lg shadow-lg overflow-hidden aspect-square touch-feedback';
+                    pieceDiv.style.backgroundImage = `url('${piece.imageData}')`;
+                    pieceDiv.style.backgroundSize = 'cover';
+                    pieceDiv.style.backgroundPosition = 'center';
+                    pieceDiv.draggable = true;
+                    pieceDiv.setAttribute('data-piece-id', piece.id);
+                    
+                    pieceDiv.addEventListener('dragstart', (e) => {
+                        draggedPiece = piece.id;
+                        e.dataTransfer.setData('text/plain', piece.id);
+                        pieceDiv.classList.add('dragging');
+                    });
+                    
+                    pieceDiv.addEventListener('dragend', () => {
+                        pieceDiv.classList.remove('dragging');
+                        draggedPiece = null;
+                    });
+                    
+                    pieceDiv.addEventListener('touchstart', (e) => {
+                        draggedPiece = piece.id;
+                        pieceDiv.classList.add('dragging');
+                    });
+                    
+                    pieceDiv.addEventListener('touchend', () => {
+                        setTimeout(() => {
+                            pieceDiv.classList.remove('dragging');
+                            draggedPiece = null;
+                        }, 100);
+                    });
+                    
+                    piecesGrid.appendChild(pieceDiv);
+                }
+            }
+        }
+        
+        function renderBoard() {
+            jigsawBoard.innerHTML = '';
+            jigsawBoard.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+            jigsawBoard.style.aspectRatio = '1 / 1';
+            
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const cell = document.createElement('div');
+                    const pieceId = boardState[row][col];
+                    const placedPiece = pieceId !== null ? pieces.find(p => p.id === pieceId) : null;
+                    
+                    cell.className = 'grid-cell rounded-lg shadow-sm aspect-square touch-feedback';
+                    
+                    if (placedPiece) {
+                        cell.style.backgroundImage = `url('${placedPiece.imageData}')`;
+                        cell.style.backgroundSize = 'cover';
+                        cell.style.backgroundPosition = 'center';
+                        cell.classList.add('filled');
+                    } else {
+                        cell.classList.add('empty');
+                    }
+                    
+                    cell.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                    });
+                    
+                    cell.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        const pieceId = draggedPiece !== null ? draggedPiece : parseInt(e.dataTransfer.getData('text/plain'));
+                        if (pieceId !== null && boardState[row][col] === null) {
+                            const piece = pieces.find(p => p.id === pieceId);
+                            if (piece && !piece.placed) {
+                                placePiece(piece.id, row, col);
+                            }
+                        }
+                    });
+                    
+                    cell.addEventListener('click', () => {
+                        if (draggedPiece !== null && boardState[row][col] === null) {
+                            const piece = pieces.find(p => p.id === draggedPiece);
+                            if (piece && !piece.placed) {
+                                placePiece(draggedPiece, row, col);
+                                draggedPiece = null;
+                            }
+                        }
+                    });
+                    
+                    jigsawBoard.appendChild(cell);
+                }
+            }
+        }
+        
+        function placePiece(pieceId, row, col) {
+            const piece = pieces.find(p => p.id === pieceId);
+            if (!piece || piece.placed) return false;
+            
+            if (piece.row === row && piece.col === col) {
+                boardState[row][col] = pieceId;
+                piece.placed = true;
+                updatePlacedCount();
+                renderPieces();
+                renderBoard();
+                
+                const cells = document.querySelectorAll('.grid-cell');
+                const index = row * gridSize + col;
+                if (cells[index]) {
+                    cells[index].classList.add('placed');
+                    setTimeout(() => cells[index].classList.remove('placed'), 300);
+                }
+                
+                checkVictory();
+                return true;
+            }
+            return false;
+        }
+        
+        function shufflePieces() {
+            // Reset all placed pieces
+            pieces.forEach(piece => {
+                piece.placed = false;
+            });
+            boardState = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+            
+            // Reshuffle the pieces
+            shufflePiecesArray();
+            
+            // Add shuffle animation
+            const container = document.getElementById('pieces-container');
+            container.classList.add('shuffling');
+            setTimeout(() => container.classList.remove('shuffling'), 300);
+            
+            renderPieces();
+            renderBoard();
+            updatePlacedCount();
+            victoryMessage.classList.add('hidden');
+            gameStatus.textContent = 'Playing';
+            gameStatus.classList.remove('text-green-600');
+            gameStatus.classList.add('text-slate-300');
+            downloadBtn.disabled = true;
+        }
+        
+        function resetBoard() {
+            pieces.forEach(piece => {
+                piece.placed = false;
+            });
+            boardState = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+            
+            // Keep the shuffled order but reset placement
+            renderPieces();
+            renderBoard();
+            updatePlacedCount();
+            victoryMessage.classList.add('hidden');
+            gameStatus.textContent = 'Playing';
+            gameStatus.classList.remove('text-green-600');
+            gameStatus.classList.add('text-slate-300');
+            downloadBtn.disabled = true;
+        }
+        
+        function updatePlacedCount() {
+            const placedCount = pieces.filter(p => p.placed).length;
+            placedCountSpan.textContent = placedCount;
+        }
+        
+        function checkVictory() {
+            const allPlaced = pieces.every(p => p.placed);
+            if (allPlaced) {
+                gameStatus.textContent = 'COMPLETE!';
+                gameStatus.classList.remove('text-slate-300');
+                gameStatus.classList.add('text-green-500', 'font-bold');
+                victoryMessage.classList.remove('hidden');
+                downloadBtn.disabled = false;
+                
+                const board = document.getElementById('jigsaw-board');
+                board.classList.add('victory-pulse');
+                setTimeout(() => board.classList.remove('victory-pulse'), 500);
+                confettiEffect();
+            }
+        }
+        
+        function confettiEffect() {
+            const colors = ['#f97316', '#ea580c', '#f59e0b', '#eab308'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'fixed w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full pointer-events-none';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = Math.random() * window.innerWidth + 'px';
+                confetti.style.top = '-10px';
+                confetti.style.position = 'fixed';
+                confetti.style.zIndex = '9999';
+                document.body.appendChild(confetti);
+                
+                gsap.to(confetti, {
+                    y: window.innerHeight + 100,
+                    x: (Math.random() - 0.5) * 200,
+                    rotation: Math.random() * 360,
+                    duration: 1 + Math.random() * 2,
+                    ease: 'power1.out',
+                    onComplete: () => confetti.remove()
+                });
+            }
+        }
+        
+        function downloadImage() {
+            const board = document.getElementById('jigsaw-board');
+            html2canvas(board, {
+                scale: 2,
+                backgroundColor: '#1a1a2e',
+                logging: false
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'growl-jigsaw-solution.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+        
+        gridSizeSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            gridSizeValue.textContent = val;
+            gridSizeValue2.textContent = val;
+        });
+        
+        applyGridBtn.addEventListener('click', () => {
+            gridSize = parseInt(gridSizeSlider.value);
+            totalPieces = gridSize * gridSize;
+            if (originalImageUrl) {
+                createPuzzle();
+            }
+        });
+        
+        shufflePiecesBtn.addEventListener('click', shufflePieces);
+        resetBoardBtn.addEventListener('click', resetBoard);
+        downloadBtn.addEventListener('click', downloadImage);
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (pieces.length > 0) {
+                renderPieces();
+            }
+        });
+    </script>
 </body>
+</html>
