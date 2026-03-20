@@ -234,6 +234,16 @@
             animation: rotation 1s linear infinite;
         }
         @keyframes rotation { 100% { transform: rotate(360deg); } }
+
+        /* ── CARTOON FILTER on all piece images ── */
+        .drag-piece img,
+        .grid-cell.filled img {
+            filter: saturate(2.2) contrast(1.35) brightness(1.05);
+            transition: filter 0.2s ease;
+        }
+        .drag-piece:hover img {
+            filter: saturate(2.8) contrast(1.5) brightness(1.12) hue-rotate(5deg);
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -463,13 +473,73 @@ removeImageBtn.addEventListener('click', () => {
     downloadBtn.disabled = true;
 });
 
-// ─── Process image to 600×600 ─────────────────────────────
+// ─── Cartoon canvas effect (posterize + edge outlines) ───
+function applyCartoonToCanvas(canvas) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+
+    // 1. Grab pixels
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const d = imageData.data;
+
+    // 2. Boost saturation (make colors pop)
+    for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i+1], b = d[i+2];
+        const gray = r * 0.299 + g * 0.587 + b * 0.114;
+        const boost = 1.7;
+        d[i]   = Math.min(255, Math.max(0, gray + (r - gray) * boost));
+        d[i+1] = Math.min(255, Math.max(0, gray + (g - gray) * boost));
+        d[i+2] = Math.min(255, Math.max(0, gray + (b - gray) * boost));
+    }
+
+    // 3. Posterize (flatten colors to N tonal levels — cartoon cel-shading look)
+    const levels = 5;
+    const factor = 255 / (levels - 1);
+    for (let i = 0; i < d.length; i += 4) {
+        d[i]   = Math.round(Math.round(d[i]   / factor) * factor);
+        d[i+1] = Math.round(Math.round(d[i+1] / factor) * factor);
+        d[i+2] = Math.round(Math.round(d[i+2] / factor) * factor);
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    // 4. Sobel edge detection → draw dark outlines
+    const src = ctx.getImageData(0, 0, w, h);
+    const out = ctx.getImageData(0, 0, w, h);
+    const s = src.data, o = out.data;
+
+    const grayAt = (px) => s[px] * 0.299 + s[px+1] * 0.587 + s[px+2] * 0.114;
+
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+            const idx = (y * w + x) * 4;
+            const tl = grayAt(((y-1)*w+(x-1))*4), tc = grayAt(((y-1)*w+x)*4), tr = grayAt(((y-1)*w+(x+1))*4);
+            const ml = grayAt((y*w+(x-1))*4),                                   mr = grayAt((y*w+(x+1))*4);
+            const bl = grayAt(((y+1)*w+(x-1))*4), bc = grayAt(((y+1)*w+x)*4), br = grayAt(((y+1)*w+(x+1))*4);
+            const gx = -tl - 2*ml - bl + tr + 2*mr + br;
+            const gy = -tl - 2*tc - tr + bl + 2*bc + br;
+            const edge = Math.sqrt(gx*gx + gy*gy);
+            if (edge > 55) {
+                // Soft dark outline
+                const alpha = Math.min(1, (edge - 55) / 80);
+                o[idx]   = Math.round(o[idx]   * (1 - alpha * 0.85));
+                o[idx+1] = Math.round(o[idx+1] * (1 - alpha * 0.85));
+                o[idx+2] = Math.round(o[idx+2] * (1 - alpha * 0.85));
+                o[idx+3] = 255;
+            }
+        }
+    }
+    ctx.putImageData(out, 0, 0);
+}
+
+// ─── Process image to 600×600 with cartoon effect ─────────
 function processImage() {
     const img = new Image();
     img.onload = () => {
         const c = document.createElement('canvas');
         c.width = c.height = 600;
         c.getContext('2d').drawImage(img, 0, 0, 600, 600);
+        // Apply cartoon effect to the full image before slicing into pieces
+        applyCartoonToCanvas(c);
         processedImageUrl = c.toDataURL('image/png');
         createPuzzle();
     };
@@ -738,11 +808,9 @@ function confettiEffect() {
     }
 }
 
-// ─── DOWNLOAD — manual canvas composite (no html2canvas) ──
-// This fixes the orange-overlay bug: we directly draw each placed
-// piece's imageData onto a canvas instead of screenshotting DOM.
+// ─── DOWNLOAD — clean canvas composite, no grid lines ─────
 async function downloadImage() {
-    showToast('📸 Compositing your jigsaw...');
+    showToast('📸 Compositing your cartoon jigsaw...');
     downloadBtn.disabled = true;
     downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Building...';
 
@@ -753,19 +821,11 @@ async function downloadImage() {
         const ctx = canvas.getContext('2d');
         const pw = size / gridSize, ph = size / gridSize;
 
-        // Dark background for unfilled cells
-        ctx.fillStyle = '#1a1a2e';
+        // Solid dark background (no grid lines drawn)
+        ctx.fillStyle = '#111122';
         ctx.fillRect(0, 0, size, size);
 
-        // Draw a subtle grid
-        ctx.strokeStyle = 'rgba(249,115,22,0.25)';
-        ctx.lineWidth = 1;
-        for (let i = 0; i <= gridSize; i++) {
-            ctx.beginPath(); ctx.moveTo(i * pw, 0); ctx.lineTo(i * pw, size); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0, i * ph); ctx.lineTo(size, i * ph); ctx.stroke();
-        }
-
-        // Draw each placed piece using its imageData directly
+        // Draw each placed piece — cartoon processed imageData, no borders/lines
         for (let row = 0; row < gridSize; row++) {
             for (let col = 0; col < gridSize; col++) {
                 const pieceId = boardState[row][col];
@@ -776,17 +836,8 @@ async function downloadImage() {
                 await new Promise(resolve => {
                     const img = new Image();
                     img.onload = () => {
-                        ctx.save();
-                        // Cartoon outline effect
-                        ctx.shadowColor = '#f97316';
-                        ctx.shadowBlur = 6;
+                        // Draw piece flush — no shadow, no stroke, no border
                         ctx.drawImage(img, col * pw, row * ph, pw, ph);
-                        // Inner border
-                        ctx.shadowBlur = 0;
-                        ctx.strokeStyle = '#f97316';
-                        ctx.lineWidth = 2;
-                        ctx.strokeRect(col * pw + 1, row * ph + 1, pw - 2, ph - 2);
-                        ctx.restore();
                         resolve();
                     };
                     img.onerror = resolve;
@@ -795,9 +846,9 @@ async function downloadImage() {
             }
         }
 
-        // Watermark
-        ctx.fillStyle = 'rgba(249,115,22,0.6)';
-        ctx.font = 'bold 18px Inter, sans-serif';
+        // Subtle GROWL watermark only
+        ctx.fillStyle = 'rgba(249,115,22,0.55)';
+        ctx.font = 'bold 16px Inter, sans-serif';
         ctx.textAlign = 'right';
         ctx.fillText('GROWL', size - 8, size - 8);
 
