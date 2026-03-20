@@ -5,1120 +5,829 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <meta name="theme-color" content="#1a1a2e">
     <title>GROWL - Cartoon Animated Jigsaw Puzzle</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- GSAP for animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <!-- html2canvas for image download with animation capture -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
-        
-        * {
-            font-family: 'Inter', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
+        * { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
         body {
             background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
         }
-        
-        /* Drag and drop zones */
+
         .drop-zone {
             transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(249, 115, 22, 0.3);
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(249,115,22,0.3);
         }
-        
-        .drop-zone:hover {
-            border-color: #f97316;
-            background: rgba(249, 115, 22, 0.1);
-        }
-        
-        .drop-zone.drag-over {
-            border-color: #f97316;
-            background: rgba(249, 115, 22, 0.15);
-            transform: scale(1.02);
-        }
-        
-        /* Puzzle pieces container */
+        .drop-zone:hover { border-color: #f97316; background: rgba(249,115,22,0.1); }
+        .drop-zone.drag-over { border-color: #f97316; background: rgba(249,115,22,0.15); transform: scale(1.02); }
+
         .pieces-container {
             max-height: 500px;
             overflow-y: auto;
             overflow-x: hidden;
             scrollbar-width: thin;
-            -webkit-overflow-scrolling: touch;
         }
-        
-        .pieces-container::-webkit-scrollbar {
-            width: 4px;
-        }
-        
-        .pieces-container::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-        }
-        
-        .pieces-container::-webkit-scrollbar-thumb {
-            background: #f97316;
-            border-radius: 10px;
-        }
-        
-        /* Draggable puzzle pieces */
+        .pieces-container::-webkit-scrollbar { width: 4px; }
+        .pieces-container::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .pieces-container::-webkit-scrollbar-thumb { background: #f97316; border-radius: 10px; }
+
+        /* ── DRAG PIECES ── */
         .drag-piece {
             cursor: grab;
-            transition: all 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
             user-select: none;
             touch-action: manipulation;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border: 3px solid transparent;
         }
-        
-        .drag-piece:active {
-            cursor: grabbing;
+        .drag-piece:hover {
+            transform: scale(1.08) rotate(-2deg);
+            box-shadow: 0 8px 24px rgba(249,115,22,0.5);
+            border-color: #f97316;
         }
-        
         .drag-piece.dragging {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: grabbing;
-            transform: scale(0.95);
+            transform: scale(0.9) rotate(5deg);
         }
-        
-        /* Jigsaw grid cells - Cartoon Animated */
+
+        /* ── BOARD CELLS ── */
         .grid-cell {
-            transition: all 0.2s ease;
-            cursor: pointer;
             position: relative;
             overflow: hidden;
             touch-action: manipulation;
-            background: rgba(30, 30, 46, 0.8);
-            border: 1px solid rgba(249, 115, 22, 0.2);
-        }
-        
-        /* Cartoon Animation for filled pieces - Continuous Animation */
-        .grid-cell.filled {
-            box-shadow: inset 0 0 0 2px #f97316, 0 4px 12px rgba(0, 0, 0, 0.3);
-            border: none;
-            animation: cartoonWiggle 2s ease-in-out infinite;
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-        
-        /* Cartoon Wiggle Animation */
-        @keyframes cartoonWiggle {
-            0%, 100% {
-                transform: translateY(0px) rotate(0deg);
-                filter: brightness(1) saturate(1);
-            }
-            20% {
-                transform: translateY(-2px) rotate(1deg);
-                filter: brightness(1.03) saturate(1.05);
-            }
-            40% {
-                transform: translateY(1px) rotate(-0.5deg);
-                filter: brightness(0.98) saturate(0.98);
-            }
-            60% {
-                transform: translateY(-1px) rotate(0.5deg);
-                filter: brightness(1.02) saturate(1.02);
-            }
-            80% {
-                transform: translateY(1px) rotate(-0.3deg);
-                filter: brightness(1) saturate(1);
-            }
-        }
-        
-        /* Cartoon Pop when placed */
-        .grid-cell.placed {
-            animation: cartoonPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
-        }
-        
-        @keyframes cartoonPop {
-            0% {
-                transform: scale(0.2) rotate(-180deg);
-                opacity: 0;
-                filter: brightness(0) saturate(0) blur(5px);
-            }
-            30% {
-                transform: scale(1.2) rotate(10deg);
-                filter: brightness(1.5) saturate(2) hue-rotate(15deg);
-            }
-            60% {
-                transform: scale(0.95) rotate(-3deg);
-                filter: brightness(1.2) saturate(1.3);
-            }
-            100% {
-                transform: scale(1) rotate(0deg);
-                opacity: 1;
-                filter: brightness(1) saturate(1) blur(0);
-            }
-        }
-        
-        /* Cartoon Hover Effect */
-        .grid-cell.filled:hover {
-            animation: cartoonBounce 0.4s ease-in-out;
+            background: rgba(30,30,46,0.8);
+            border: 2px dashed rgba(249,115,22,0.4);
             cursor: pointer;
+            transition: border-color 0.2s;
+            /* IMPORTANT: background-size covers the cell */
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
         }
-        
-        @keyframes cartoonBounce {
-            0%, 100% { transform: translateY(0px) scale(1); }
-            50% { transform: translateY(-8px) scale(1.05); filter: brightness(1.2); }
-        }
-        
-        /* Cartoon Glow Effect */
-        .grid-cell.filled::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-radius: inherit;
-            pointer-events: none;
-            animation: cartoonGlow 1.5s ease-in-out infinite;
-        }
-        
-        @keyframes cartoonGlow {
-            0%, 100% {
-                box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.3);
-            }
-            50% {
-                box-shadow: 0 0 10px 3px rgba(249, 115, 22, 0.5);
-            }
-        }
-        
-        /* Cartoon Sparkle Effect */
-        .grid-cell.filled::after {
-            content: '✨';
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            font-size: 14px;
-            opacity: 0;
-            pointer-events: none;
-            animation: cartoonSparkle 1.8s ease-in-out infinite;
-        }
-        
-        @keyframes cartoonSparkle {
-            0%, 100% {
-                opacity: 0;
-                transform: scale(0.5) rotate(0deg);
-            }
-            25% {
-                opacity: 1;
-                transform: scale(1) rotate(90deg);
-            }
-            75% {
-                opacity: 0.8;
-                transform: scale(0.8) rotate(180deg);
-            }
-        }
-        
-        /* Cartoon Floating Hearts for placed pieces */
-        .grid-cell.filled .floating-heart {
-            position: absolute;
-            font-size: 12px;
-            pointer-events: none;
-            animation: floatUp 1s ease-out forwards;
-        }
-        
-        @keyframes floatUp {
-            0% {
-                transform: translateY(0) scale(1);
-                opacity: 1;
-            }
-            100% {
-                transform: translateY(-30px) scale(0.5);
-                opacity: 0;
-            }
-        }
-        
-        .grid-cell.empty {
-            background: linear-gradient(135deg, rgba(30, 30, 46, 0.6) 0%, rgba(20, 20, 35, 0.8) 100%);
-            border: 2px dashed rgba(249, 115, 22, 0.4);
-            position: relative;
-        }
-        
+
+        /* Empty cell pulsing "?" */
         .grid-cell.empty::after {
             content: '?';
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
             font-size: 24px;
             font-weight: bold;
-            color: rgba(249, 115, 22, 0.4);
-            transition: all 0.3s ease;
-            animation: cartoonQuestion 1.5s ease-in-out infinite;
+            color: rgba(249,115,22,0.5);
+            animation: questionPulse 1.6s ease-in-out infinite;
+            pointer-events: none;
         }
-        
-        @keyframes cartoonQuestion {
-            0%, 100% {
-                transform: translate(-50%, -50%) scale(1);
-                opacity: 0.5;
-            }
-            50% {
-                transform: translate(-50%, -50%) scale(1.2);
-                opacity: 1;
-                color: rgba(249, 115, 22, 0.8);
-            }
+        @keyframes questionPulse {
+            0%,100% { opacity: 0.4; transform: translate(-50%,-50%) scale(1); }
+            50%      { opacity: 1;   transform: translate(-50%,-50%) scale(1.3); }
         }
-        
-        .grid-cell.empty:hover::after {
-            transform: translate(-50%, -50%) scale(1.3);
-            color: rgba(249, 115, 22, 0.9);
+        .grid-cell.empty:hover { border-color: #f97316; }
+
+        /* ── CARTOON ANIMATION on placed cells ── */
+        /* Use outline (box-shadow) + transform so background-image is NEVER covered */
+        .grid-cell.filled {
+            border: none;
+            /* Thick cartoon outline */
+            box-shadow:
+                0 0 0 3px #f97316,
+                0 0 0 5px #0f0f1a,
+                0 6px 18px rgba(0,0,0,0.5);
+            animation: cartoonWobble 2.4s ease-in-out infinite;
         }
-        
-        /* Shuffle animation */
+
+        @keyframes cartoonWobble {
+            0%,100% { transform: rotate(0deg)   scale(1)    translateY(0px);   filter: saturate(1.1) brightness(1); }
+            15%     { transform: rotate(1.5deg) scale(1.03) translateY(-2px);  filter: saturate(1.3) brightness(1.05); }
+            30%     { transform: rotate(-1deg)  scale(1.01) translateY(1px);   filter: saturate(1.1) brightness(1); }
+            45%     { transform: rotate(0.8deg) scale(1.02) translateY(-1px);  filter: saturate(1.2) brightness(1.03); }
+            60%     { transform: rotate(-0.5deg)scale(1)    translateY(0.5px); filter: saturate(1.1) brightness(1); }
+            75%     { transform: rotate(0.3deg) scale(1.01) translateY(-0.5px);filter: saturate(1.15)brightness(1.02); }
+        }
+
+        /* Cartoon POP animation when a piece is first placed */
+        @keyframes cartoonPop {
+            0%   { transform: scale(0.1) rotate(-180deg); opacity: 0; filter: brightness(3) saturate(3); }
+            40%  { transform: scale(1.35) rotate(8deg);  opacity: 1; filter: brightness(1.5) saturate(2) hue-rotate(20deg); }
+            65%  { transform: scale(0.9) rotate(-4deg);              filter: brightness(1.2) saturate(1.4); }
+            80%  { transform: scale(1.08) rotate(2deg);              filter: brightness(1.1) saturate(1.2); }
+            100% { transform: scale(1) rotate(0deg);                 filter: saturate(1.1) brightness(1); }
+        }
+        .grid-cell.just-placed {
+            animation: cartoonPop 0.65s cubic-bezier(0.34,1.56,0.64,1) forwards !important;
+        }
+
+        /* Cartoon hover bounce on filled pieces */
+        .grid-cell.filled:hover {
+            animation: cartoonBounce 0.35s ease-out;
+            cursor: default;
+        }
+        @keyframes cartoonBounce {
+            0%,100% { transform: scale(1)    translateY(0);   }
+            40%     { transform: scale(1.08) translateY(-8px) rotate(2deg); filter: brightness(1.2) saturate(1.5); }
+            70%     { transform: scale(0.97) translateY(3px); }
+        }
+
+        /* Shimmer sweep animation on placed pieces */
+        .grid-cell.filled::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 60%; height: 100%;
+            background: linear-gradient(
+                105deg,
+                transparent 30%,
+                rgba(255,255,255,0.25) 50%,
+                transparent 70%
+            );
+            animation: shimmerSweep 3s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes shimmerSweep {
+            0%,60%,100% { left: -100%; opacity: 0; }
+            70%          { left: 120%;  opacity: 1; }
+        }
+
+        /* Victory */
+        @keyframes victoryPulse {
+            0%,100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(249,115,22,0.6); }
+            50%     { transform: scale(1.04); box-shadow: 0 0 0 20px rgba(249,115,22,0); }
+        }
+        .victory-pulse { animation: victoryPulse 0.7s ease-out; }
+
+        /* Shuffle */
         @keyframes shuffleAnim {
-            0% { transform: rotate(0deg) scale(1); filter: hue-rotate(0deg); }
-            25% { transform: rotate(5deg) scale(1.05); filter: hue-rotate(90deg); }
-            75% { transform: rotate(-5deg) scale(1.05); filter: hue-rotate(270deg); }
-            100% { transform: rotate(0deg) scale(1); filter: hue-rotate(360deg); }
+            0%   { transform: rotate(0deg)   scale(1);    filter: hue-rotate(0deg); }
+            25%  { transform: rotate(6deg)   scale(1.06); filter: hue-rotate(90deg); }
+            75%  { transform: rotate(-6deg)  scale(1.06); filter: hue-rotate(270deg); }
+            100% { transform: rotate(0deg)   scale(1);    filter: hue-rotate(360deg); }
         }
-        
-        .shuffling {
-            animation: shuffleAnim 0.6s ease-in-out;
-        }
-        
-        /* Victory animation */
-        @keyframes victoryCelebration {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
-            25% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(249, 115, 22, 0.3); filter: brightness(1.2) hue-rotate(0deg); }
-            50% { transform: scale(1.1); box-shadow: 0 0 0 25px rgba(249, 115, 22, 0); filter: brightness(1.3) hue-rotate(360deg); }
-            75% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(249, 115, 22, 0.2); }
-        }
-        
-        .victory-pulse {
-            animation: victoryCelebration 0.8s ease-out;
-        }
-        
-        /* Download Animation Preview */
-        @keyframes downloadFlash {
-            0% { filter: brightness(1); }
-            50% { filter: brightness(1.2); box-shadow: 0 0 20px rgba(249, 115, 22, 0.8); }
-            100% { filter: brightness(1); }
-        }
-        
-        .downloading {
-            animation: downloadFlash 0.5s ease-out;
-        }
-        
-        /* Loading spinner */
-        .loader {
-            width: 48px;
-            height: 48px;
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-bottom-color: #f97316;
-            border-radius: 50%;
-            display: inline-block;
-            box-sizing: border-box;
-            animation: rotation 1s linear infinite;
-        }
-        
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Grid size slider */
+        .shuffling { animation: shuffleAnim 0.6s ease-in-out; }
+
         input[type="range"] {
-            -webkit-appearance: none;
-            appearance: none;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
-            outline: none;
+            -webkit-appearance: none; appearance: none;
+            height: 6px; background: rgba(255,255,255,0.1);
+            border-radius: 5px; outline: none;
         }
-        
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            background: #f97316;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.2s;
+            -webkit-appearance: none; appearance: none;
+            width: 20px; height: 20px; background: #f97316;
+            border-radius: 50%; cursor: pointer; transition: all 0.2s;
         }
-        
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-            background: #ea580c;
-        }
-        
-        /* Touch device optimizations */
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); background: #ea580c; }
+
         @media (hover: hover) {
-            .grid-cell.filled:hover {
-                transform: scale(1.02);
-                filter: brightness(1.1);
-                z-index: 10;
-            }
-            
-            .drag-piece:hover {
-                transform: scale(1.05);
-                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-            }
+            .drag-piece:hover { transform: scale(1.06) rotate(-2deg); }
         }
-        
-        /* Mobile optimizations */
         @media (max-width: 768px) {
-            .pieces-container {
-                max-height: 280px;
-            }
-            
-            .grid-cell.empty::after {
-                font-size: 16px;
-            }
-            
-            .grid-cell.filled::after {
-                font-size: 10px;
-                top: -3px;
-                right: -3px;
-            }
-            
-            button, .drag-piece, .grid-cell {
-                cursor: default !important;
-            }
+            .pieces-container { max-height: 280px; }
+            button, .drag-piece, .grid-cell { cursor: default !important; }
         }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: #f97316;
-            border-radius: 10px;
-        }
-        
-        /* Touch feedback */
-        .touch-feedback {
-            transition: all 0.1s ease;
-        }
-        
-        .touch-feedback:active {
-            transform: scale(0.95);
-            opacity: 0.8;
-        }
-        
-        /* Card styles - Dark theme */
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #f97316; border-radius: 10px; }
+
         .dark-card {
-            background: rgba(26, 26, 46, 0.8);
+            background: rgba(26,26,46,0.85);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(249, 115, 22, 0.2);
+            border: 1px solid rgba(249,115,22,0.2);
         }
-        
-        /* Button styles */
         .btn-primary {
             background: linear-gradient(135deg, #f97316, #ea580c);
             transition: all 0.3s ease;
         }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(249, 115, 22, 0.3);
-        }
-        
-        /* Two column layout */
-        .game-area {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }
-        
-        @media (max-width: 768px) {
-            .game-area {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-        }
-        
-        /* Cartoon Title Animation */
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(249,115,22,0.35); }
+        .touch-feedback { transition: all 0.1s ease; }
+        .touch-feedback:active { transform: scale(0.95); opacity: 0.8; }
+
+        .game-area { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 768px) { .game-area { grid-template-columns: 1fr; gap: 1rem; } }
+
         @keyframes titleWiggle {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-5px); }
+            0%,100% { transform: translateY(0px) rotate(0deg); }
+            25%     { transform: translateY(-5px) rotate(-1deg); }
+            75%     { transform: translateY(-3px) rotate(1deg); }
         }
-        
-        h1 {
-            animation: titleWiggle 3s ease-in-out infinite;
-        }
-        
-        /* Download notification */
+        h1 { animation: titleWiggle 3s ease-in-out infinite; }
+
         .download-toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
+            position: fixed; bottom: 20px; left: 50%;
             transform: translateX(-50%);
             background: linear-gradient(135deg, #f97316, #ea580c);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-weight: bold;
-            z-index: 10000;
+            color: white; padding: 12px 24px; border-radius: 50px;
+            font-weight: bold; z-index: 10000;
             animation: slideUp 0.3s ease-out;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        
         @keyframes slideUp {
-            from {
-                transform: translateX(-50%) translateY(100px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(-50%) translateY(0);
-                opacity: 1;
-            }
+            from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+            to   { transform: translateX(-50%) translateY(0);     opacity: 1; }
         }
+
+        .loader {
+            width: 48px; height: 48px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-bottom-color: #f97316;
+            border-radius: 50%; display: inline-block;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="min-h-screen">
-    <div class="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 max-w-full lg:max-w-6xl">
-        
-        <!-- Header with GROWL -->
-        <div class="text-center mb-6 sm:mb-8">
-            <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
-                GROWL
-            </h1>
-            <p class="text-slate-400 mt-1 sm:mt-2 text-xs sm:text-sm font-medium">🎨 cartoon animated jigsaw • pieces wiggle, sparkle, and bounce! 🎨</p>
-        </div>
+<div class="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 max-w-full lg:max-w-6xl">
 
-        <!-- Upload Section -->
-        <div class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 mb-6">
-            <div class="bg-gradient-to-r from-orange-600 to-orange-500 px-4 sm:px-6 py-3 sm:py-4">
-                <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
-                    <i class="fas fa-cloud-upload-alt text-sm sm:text-base"></i>
-                    <span>Upload Your Image</span>
-                </h2>
-            </div>
-            <div class="p-4 sm:p-6">
-                <div id="drop-zone" class="drop-zone border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all">
-                    <i class="fas fa-image text-3xl sm:text-4xl md:text-5xl text-orange-500 mb-2 sm:mb-3 block"></i>
-                    <span class="text-slate-300 font-medium block mb-1 text-sm sm:text-base">Drag & drop your image here</span>
-                    <span class="text-slate-500 text-xs sm:text-sm">or click to browse</span>
-                    <input type="file" id="photo-upload" class="hidden" accept="image/jpeg, image/png, image/jpg">
-                </div>
-                
-                <!-- Preview Section -->
-                <div id="preview-container" class="mt-4 sm:mt-6 hidden">
-                    <div class="relative rounded-xl overflow-hidden bg-black/50">
-                        <img id="preview" class="w-full h-auto max-h-32 sm:max-h-48 object-contain" alt="Preview">
-                        <button id="remove-image" class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-red-700 transition shadow-lg">
-                            <i class="fas fa-times text-xs sm:text-sm"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Loading Indicator -->
-                <div id="loading" class="hidden mt-4 text-center">
-                    <div class="loader mx-auto"></div>
-                    <p class="text-slate-400 mt-2 text-xs sm:text-sm">Processing image...</p>
-                </div>
-            </div>
-        </div>
+    <!-- Header -->
+    <div class="text-center mb-6 sm:mb-8">
+        <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
+            GROWL
+        </h1>
+        <p class="text-slate-400 mt-1 sm:mt-2 text-xs sm:text-sm font-medium">🎨 cartoon animated jigsaw • pieces wiggle, shimmer, and bounce! 🎨</p>
+    </div>
 
-        <!-- Grid Size Control -->
-        <div id="grid-control" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 mb-6 hidden">
-            <div class="bg-gradient-to-r from-purple-600 to-pink-600 px-4 sm:px-6 py-3 sm:py-4">
-                <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
-                    <i class="fas fa-th text-sm sm:text-base"></i>
-                    <span>Puzzle Difficulty</span>
-                </h2>
-            </div>
-            <div class="p-4 sm:p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <span class="text-slate-300 font-medium text-sm sm:text-base">Grid Size: <span id="grid-size-value" class="text-orange-500 font-bold">3</span> x <span id="grid-size-value-2" class="text-orange-500 font-bold">3</span></span>
-                    <span class="text-slate-500 text-xs">(more pieces = harder)</span>
-                </div>
-                <input type="range" id="grid-size-slider" min="2" max="6" value="3" step="1" class="w-full">
-                <div class="flex justify-between text-[10px] sm:text-xs text-slate-500 mt-2">
-                    <span>2x2</span>
-                    <span>3x3</span>
-                    <span>4x4</span>
-                    <span>5x5</span>
-                    <span>6x6</span>
-                </div>
-                <button id="apply-grid-btn" class="mt-4 w-full btn-primary text-white rounded-xl px-4 py-2 sm:py-2.5 font-semibold transition text-sm sm:text-base">
-                    <i class="fas fa-cogs mr-2"></i>Apply New Grid
-                </button>
-            </div>
+    <!-- Upload -->
+    <div class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 mb-6">
+        <div class="bg-gradient-to-r from-orange-600 to-orange-500 px-4 sm:px-6 py-3 sm:py-4">
+            <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                <i class="fas fa-cloud-upload-alt"></i> Upload Your Image
+            </h2>
         </div>
-
-        <!-- Main Game Area -->
-        <div class="game-area">
-            
-            <!-- LEFT SIDE: Puzzle Pieces -->
-            <div id="pieces-card" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
-                <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
-                    <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
-                        <i class="fas fa-puzzle-piece text-sm sm:text-base"></i>
-                        <span>Puzzle Pieces</span>
-                        <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 py-0.5 sm:py-1 rounded-full ml-2 text-orange-300">drag from here</span>
-                    </h2>
-                </div>
-                <div id="pieces-container" class="pieces-container p-4 sm:p-6">
-                    <div id="pieces-grid" class="grid gap-2 sm:gap-3"></div>
-                </div>
+        <div class="p-4 sm:p-6">
+            <div id="drop-zone" class="drop-zone border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer">
+                <i class="fas fa-image text-3xl sm:text-4xl text-orange-500 mb-2 block"></i>
+                <span class="text-slate-300 font-medium block mb-1 text-sm sm:text-base">Drag & drop your image here</span>
+                <span class="text-slate-500 text-xs sm:text-sm">or click to browse</span>
+                <input type="file" id="photo-upload" class="hidden" accept="image/jpeg,image/png,image/jpg,image/webp">
             </div>
-            
-            <!-- RIGHT SIDE: Cartoon Animated Jigsaw Board -->
-            <div id="board-card" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
-                <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
-                    <h2 class="text-white font-bold text-base sm:text-lg flex items-center justify-between">
-                        <span class="flex items-center gap-2"><i class="fas fa-th-large text-sm sm:text-base"></i> Cartoon Jigsaw Board</span>
-                        <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 sm:px-3 py-1 rounded-full text-orange-300">✨ wiggling & sparkling ✨</span>
-                    </h2>
-                </div>
-                <div class="p-4 sm:p-6 bg-black/20">
-                    <div id="jigsaw-board" class="grid gap-1.5 sm:gap-2 max-w-full mx-auto aspect-square"></div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Game Stats & Controls -->
-        <div id="game-stats" class="mt-6 hidden">
-            <div class="dark-card rounded-xl p-3 sm:p-4 border border-orange-500/20">
-                <div class="flex justify-between items-center mb-3 sm:mb-4">
-                    <div class="text-center flex-1">
-                        <p class="text-slate-400 text-[10px] sm:text-xs font-medium">PIECES PLACED</p>
-                        <p id="placed-count" class="text-xl sm:text-2xl font-bold text-orange-500">0</p>
-                    </div>
-                    <div class="text-center flex-1 border-l border-r border-orange-500/20">
-                        <p class="text-slate-400 text-[10px] sm:text-xs font-medium">TOTAL PIECES</p>
-                        <p id="total-pieces" class="text-xl sm:text-2xl font-bold text-slate-300">0</p>
-                    </div>
-                    <div class="text-center flex-1">
-                        <p class="text-slate-400 text-[10px] sm:text-xs font-medium">STATUS</p>
-                        <p id="game-status" class="text-xs sm:text-sm font-semibold text-slate-300">Playing</p>
-                    </div>
-                </div>
-                <div class="flex gap-2 sm:gap-3">
-                    <button id="shuffle-pieces-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
-                        <i class="fas fa-random mr-1 sm:mr-2 text-xs sm:text-sm"></i>Shuffle
-                    </button>
-                    <button id="reset-board-btn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
-                        <i class="fas fa-sync-alt mr-1 sm:mr-2 text-xs sm:text-sm"></i>Reset
-                    </button>
-                    <button id="download-btn" class="flex-1 btn-primary text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm touch-feedback" disabled>
-                        <i class="fas fa-download mr-1 sm:mr-2 text-xs sm:text-sm"></i>Download
+            <div id="preview-container" class="mt-4 sm:mt-6 hidden">
+                <div class="relative rounded-xl overflow-hidden bg-black/50">
+                    <img id="preview" class="w-full h-auto max-h-32 sm:max-h-48 object-contain" alt="Preview">
+                    <button id="remove-image" class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-red-700 transition shadow-lg">
+                        <i class="fas fa-times text-xs sm:text-sm"></i>
                     </button>
                 </div>
             </div>
-        </div>
-        
-        <!-- Victory Message -->
-        <div id="victory-message" class="hidden mt-4 text-center">
-            <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl p-3 sm:p-4">
-                <i class="fas fa-trophy text-2xl sm:text-3xl mb-1 sm:mb-2 block"></i>
-                <p class="font-bold text-base sm:text-xl">PUZZLE COMPLETE! 🎉</p>
-                <p class="text-[10px] sm:text-sm mt-0.5 sm:mt-1 text-green-100">Your cartoon masterpiece is ready to download!</p>
+            <div id="loading" class="hidden mt-4 text-center">
+                <div class="loader mx-auto"></div>
+                <p class="text-slate-400 mt-2 text-xs sm:text-sm">Processing image...</p>
             </div>
-        </div>
-        
-        <!-- Footer -->
-        <div class="text-center mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-orange-500/20">
-            <p class="text-slate-500 text-[10px] sm:text-xs">GROWL • cartoon animated jigsaw • pieces wiggle, sparkle, and bounce with cartoon magic!</p>
         </div>
     </div>
 
-    <script>
-        // Game State
-        let originalImageUrl = null;
-        let processedImageUrl = null;
-        let gridSize = 3;
-        let totalPieces = 9;
-        let pieces = [];
-        let boardState = [];
-        let draggedPiece = null;
-        let shuffledPieces = [];
-        
-        // DOM Elements
-        const dropZone = document.getElementById('drop-zone');
-        const photoUpload = document.getElementById('photo-upload');
-        const preview = document.getElementById('preview');
-        const previewContainer = document.getElementById('preview-container');
-        const removeImageBtn = document.getElementById('remove-image');
-        const loadingDiv = document.getElementById('loading');
-        const gridControl = document.getElementById('grid-control');
-        const piecesCard = document.getElementById('pieces-card');
-        const boardCard = document.getElementById('board-card');
-        const gameStats = document.getElementById('game-stats');
-        const gridSizeSlider = document.getElementById('grid-size-slider');
-        const gridSizeValue = document.getElementById('grid-size-value');
-        const gridSizeValue2 = document.getElementById('grid-size-value-2');
-        const applyGridBtn = document.getElementById('apply-grid-btn');
-        const piecesGrid = document.getElementById('pieces-grid');
-        const jigsawBoard = document.getElementById('jigsaw-board');
-        const placedCountSpan = document.getElementById('placed-count');
-        const totalPiecesSpan = document.getElementById('total-pieces');
-        const gameStatus = document.getElementById('game-status');
-        const shufflePiecesBtn = document.getElementById('shuffle-pieces-btn');
-        const resetBoardBtn = document.getElementById('reset-board-btn');
-        const downloadBtn = document.getElementById('download-btn');
-        const victoryMessage = document.getElementById('victory-message');
-        
-        // Show toast notification
-        function showToast(message, isError = false) {
-            const toast = document.createElement('div');
-            toast.className = 'download-toast';
-            toast.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-2"></i>${message}`;
-            if (isError) {
-                toast.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-            }
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
-        }
-        
-        // Handle drag & drop upload
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('drag-over');
-        });
-        
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-over');
-        });
-        
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image/')) {
-                handleImageUpload(file);
-            }
-        });
-        
-        dropZone.addEventListener('click', () => {
-            photoUpload.click();
-        });
-        
-        photoUpload.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file && file.type.startsWith('image/')) {
-                handleImageUpload(file);
-            }
-        });
-        
-        function handleImageUpload(file) {
-            const reader = new FileReader();
-            loadingDiv.classList.remove('hidden');
-            reader.onload = function(event) {
-                originalImageUrl = event.target.result;
-                preview.src = originalImageUrl;
-                previewContainer.classList.remove('hidden');
-                loadingDiv.classList.add('hidden');
-                gridControl.classList.remove('hidden');
-                processImage();
-            };
-            reader.readAsDataURL(file);
-        }
-        
-        removeImageBtn.addEventListener('click', () => {
-            originalImageUrl = null;
-            processedImageUrl = null;
-            previewContainer.classList.add('hidden');
-            gridControl.classList.add('hidden');
-            piecesCard.classList.add('hidden');
-            boardCard.classList.add('hidden');
-            gameStats.classList.add('hidden');
-            photoUpload.value = '';
-            piecesGrid.innerHTML = '';
-            jigsawBoard.innerHTML = '';
-            victoryMessage.classList.add('hidden');
-            downloadBtn.disabled = true;
-        });
-        
-        function processImage() {
+    <!-- Grid Size -->
+    <div id="grid-control" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 mb-6 hidden">
+        <div class="bg-gradient-to-r from-purple-600 to-pink-600 px-4 sm:px-6 py-3 sm:py-4">
+            <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                <i class="fas fa-th"></i> Puzzle Difficulty
+            </h2>
+        </div>
+        <div class="p-4 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+                <span class="text-slate-300 font-medium text-sm sm:text-base">
+                    Grid Size: <span id="grid-size-value" class="text-orange-500 font-bold">3</span>
+                    x <span id="grid-size-value-2" class="text-orange-500 font-bold">3</span>
+                </span>
+                <span class="text-slate-500 text-xs">(more pieces = harder)</span>
+            </div>
+            <input type="range" id="grid-size-slider" min="2" max="6" value="3" step="1" class="w-full">
+            <div class="flex justify-between text-[10px] sm:text-xs text-slate-500 mt-2">
+                <span>2x2</span><span>3x3</span><span>4x4</span><span>5x5</span><span>6x6</span>
+            </div>
+            <button id="apply-grid-btn" class="mt-4 w-full btn-primary text-white rounded-xl px-4 py-2 sm:py-2.5 font-semibold transition text-sm sm:text-base">
+                <i class="fas fa-cogs mr-2"></i>Apply New Grid
+            </button>
+        </div>
+    </div>
+
+    <!-- Game Area -->
+    <div class="game-area">
+        <!-- Pieces -->
+        <div id="pieces-card" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
+            <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
+                <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                    <i class="fas fa-puzzle-piece"></i> Puzzle Pieces
+                    <span class="text-[10px] bg-orange-500/20 px-2 py-0.5 rounded-full ml-2 text-orange-300">drag from here</span>
+                </h2>
+            </div>
+            <div id="pieces-container" class="pieces-container p-4 sm:p-6">
+                <div id="pieces-grid" class="grid gap-2 sm:gap-3"></div>
+            </div>
+        </div>
+
+        <!-- Board -->
+        <div id="board-card" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
+            <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
+                <h2 class="text-white font-bold text-base sm:text-lg flex items-center justify-between">
+                    <span class="flex items-center gap-2"><i class="fas fa-th-large"></i> Cartoon Jigsaw Board</span>
+                    <span class="text-[10px] bg-orange-500/20 px-2 py-1 rounded-full text-orange-300">✨ live animations ✨</span>
+                </h2>
+            </div>
+            <div class="p-4 sm:p-6 bg-black/20">
+                <div id="jigsaw-board" class="grid gap-1.5 sm:gap-2 max-w-full mx-auto aspect-square"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div id="game-stats" class="mt-6 hidden">
+        <div class="dark-card rounded-xl p-3 sm:p-4 border border-orange-500/20">
+            <div class="flex justify-between items-center mb-3 sm:mb-4">
+                <div class="text-center flex-1">
+                    <p class="text-slate-400 text-[10px] sm:text-xs font-medium">PIECES PLACED</p>
+                    <p id="placed-count" class="text-xl sm:text-2xl font-bold text-orange-500">0</p>
+                </div>
+                <div class="text-center flex-1 border-l border-r border-orange-500/20">
+                    <p class="text-slate-400 text-[10px] sm:text-xs font-medium">TOTAL PIECES</p>
+                    <p id="total-pieces" class="text-xl sm:text-2xl font-bold text-slate-300">0</p>
+                </div>
+                <div class="text-center flex-1">
+                    <p class="text-slate-400 text-[10px] sm:text-xs font-medium">STATUS</p>
+                    <p id="game-status" class="text-xs sm:text-sm font-semibold text-slate-300">Playing</p>
+                </div>
+            </div>
+            <div class="flex gap-2 sm:gap-3">
+                <button id="shuffle-pieces-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
+                    <i class="fas fa-random mr-1 sm:mr-2 text-xs"></i>Shuffle
+                </button>
+                <button id="reset-board-btn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
+                    <i class="fas fa-sync-alt mr-1 sm:mr-2 text-xs"></i>Reset
+                </button>
+                <button id="download-btn" class="flex-1 btn-primary text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm touch-feedback" disabled>
+                    <i class="fas fa-download mr-1 sm:mr-2 text-xs"></i>Download
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory -->
+    <div id="victory-message" class="hidden mt-4 text-center">
+        <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl p-3 sm:p-4">
+            <i class="fas fa-trophy text-2xl sm:text-3xl mb-1 sm:mb-2 block"></i>
+            <p class="font-bold text-base sm:text-xl">PUZZLE COMPLETE! 🎉</p>
+            <p class="text-[10px] sm:text-sm mt-0.5 sm:mt-1 text-green-100">Your cartoon masterpiece is ready to download!</p>
+        </div>
+    </div>
+
+    <div class="text-center mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-orange-500/20">
+        <p class="text-slate-500 text-[10px] sm:text-xs">GROWL • cartoon animated jigsaw • pieces wiggle, shimmer, and bounce with cartoon magic!</p>
+    </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────
+let originalImageUrl = null;
+let processedImageUrl = null;
+let gridSize = 3;
+let totalPieces = 9;
+let pieces = [];
+let boardState = [];
+let draggedPiece = null;
+let shuffledPieces = [];
+
+// ─── DOM ──────────────────────────────────────────────────
+const dropZone          = document.getElementById('drop-zone');
+const photoUpload       = document.getElementById('photo-upload');
+const preview           = document.getElementById('preview');
+const previewContainer  = document.getElementById('preview-container');
+const removeImageBtn    = document.getElementById('remove-image');
+const loadingDiv        = document.getElementById('loading');
+const gridControl       = document.getElementById('grid-control');
+const piecesCard        = document.getElementById('pieces-card');
+const boardCard         = document.getElementById('board-card');
+const gameStats         = document.getElementById('game-stats');
+const gridSizeSlider    = document.getElementById('grid-size-slider');
+const gridSizeValue     = document.getElementById('grid-size-value');
+const gridSizeValue2    = document.getElementById('grid-size-value-2');
+const applyGridBtn      = document.getElementById('apply-grid-btn');
+const piecesGrid        = document.getElementById('pieces-grid');
+const jigsawBoard       = document.getElementById('jigsaw-board');
+const placedCountSpan   = document.getElementById('placed-count');
+const totalPiecesSpan   = document.getElementById('total-pieces');
+const gameStatus        = document.getElementById('game-status');
+const shufflePiecesBtn  = document.getElementById('shuffle-pieces-btn');
+const resetBoardBtn     = document.getElementById('reset-board-btn');
+const downloadBtn       = document.getElementById('download-btn');
+const victoryMessage    = document.getElementById('victory-message');
+
+// ─── Toast ───────────────────────────────────────────────
+function showToast(msg, isError = false) {
+    const t = document.createElement('div');
+    t.className = 'download-toast';
+    t.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-2"></i>${msg}`;
+    if (isError) t.style.background = 'linear-gradient(135deg,#ef4444,#dc2626)';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+}
+
+// ─── Upload ──────────────────────────────────────────────
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('image/')) handleImageUpload(f);
+});
+dropZone.addEventListener('click', () => photoUpload.click());
+photoUpload.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f && f.type.startsWith('image/')) handleImageUpload(f);
+});
+
+function handleImageUpload(file) {
+    const reader = new FileReader();
+    loadingDiv.classList.remove('hidden');
+    reader.onload = ev => {
+        originalImageUrl = ev.target.result;
+        preview.src = originalImageUrl;
+        previewContainer.classList.remove('hidden');
+        loadingDiv.classList.add('hidden');
+        gridControl.classList.remove('hidden');
+        processImage();
+    };
+    reader.readAsDataURL(file);
+}
+
+removeImageBtn.addEventListener('click', () => {
+    originalImageUrl = processedImageUrl = null;
+    previewContainer.classList.add('hidden');
+    gridControl.classList.add('hidden');
+    piecesCard.classList.add('hidden');
+    boardCard.classList.add('hidden');
+    gameStats.classList.add('hidden');
+    photoUpload.value = '';
+    piecesGrid.innerHTML = '';
+    jigsawBoard.innerHTML = '';
+    victoryMessage.classList.add('hidden');
+    downloadBtn.disabled = true;
+});
+
+// ─── Process image to 600×600 ─────────────────────────────
+function processImage() {
+    const img = new Image();
+    img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = c.height = 600;
+        c.getContext('2d').drawImage(img, 0, 0, 600, 600);
+        processedImageUrl = c.toDataURL('image/png');
+        createPuzzle();
+    };
+    img.src = originalImageUrl;
+}
+
+// ─── Create puzzle pieces ─────────────────────────────────
+function createPuzzle() {
+    if (!processedImageUrl) return;
+    totalPieces = gridSize * gridSize;
+    pieces = [];
+    boardState = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
+    const pw = 600 / gridSize, ph = 600 / gridSize;
+
+    let loaded = 0;
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            const c = document.createElement('canvas');
+            c.width = pw; c.height = ph;
+            const ctx = c.getContext('2d');
             const img = new Image();
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                canvas.width = 600;
-                canvas.height = 600;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, 600, 600);
-                processedImageUrl = canvas.toDataURL();
-                createPuzzle();
+            img.onload = () => {
+                ctx.drawImage(img, -col * pw, -row * ph, 600, 600);
+                pieces.push({ id: row * gridSize + col, row, col, imageData: c.toDataURL('image/png'), placed: false });
+                if (++loaded === totalPieces) {
+                    shufflePiecesArray();
+                    renderPieces();
+                    renderBoard();
+                    piecesCard.classList.remove('hidden');
+                    boardCard.classList.remove('hidden');
+                    gameStats.classList.remove('hidden');
+                    totalPiecesSpan.textContent = totalPieces;
+                    updatePlacedCount();
+                    gsap.fromTo('#pieces-card', { x: -50, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: 'backOut' });
+                    gsap.fromTo('#board-card',  { x:  50, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: 'backOut', delay: 0.1 });
+                }
             };
-            img.src = originalImageUrl;
+            img.src = processedImageUrl;
         }
-        
-        function createPuzzle() {
-            if (!processedImageUrl) return;
-            
-            totalPieces = gridSize * gridSize;
-            pieces = [];
-            boardState = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
-            
-            const pieceWidth = 600 / gridSize;
-            const pieceHeight = 600 / gridSize;
-            
-            for (let row = 0; row < gridSize; row++) {
-                for (let col = 0; col < gridSize; col++) {
-                    pieces.push({
-                        id: row * gridSize + col,
-                        row: row,
-                        col: col,
-                        imageData: null,
-                        placed: false
-                    });
+    }
+}
+
+function shufflePiecesArray() {
+    const idx = pieces.map((_, i) => i);
+    for (let i = idx.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    shuffledPieces = idx;
+}
+
+// ─── Render pieces tray ───────────────────────────────────
+function renderPieces() {
+    piecesGrid.innerHTML = '';
+    const cols = Math.min(gridSize, window.innerWidth < 640 ? 3 : 4);
+    piecesGrid.style.gridTemplateColumns = `repeat(${cols}, minmax(70px, 1fr))`;
+
+    for (const idx of shuffledPieces) {
+        const piece = pieces[idx];
+        if (piece.placed) continue;
+        const div = document.createElement('div');
+        div.className = 'drag-piece rounded-lg overflow-hidden aspect-square touch-feedback';
+        // Use <img> inside so background-image issues don't apply here
+        const img = document.createElement('img');
+        img.src = piece.imageData;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;image-rendering:pixelated;';
+        img.draggable = false;
+        div.appendChild(img);
+        div.draggable = true;
+        div.dataset.pieceId = piece.id;
+
+        div.addEventListener('dragstart', e => {
+            draggedPiece = piece.id;
+            e.dataTransfer.setData('text/plain', String(piece.id));
+            div.classList.add('dragging');
+        });
+        div.addEventListener('dragend', () => {
+            div.classList.remove('dragging');
+            draggedPiece = null;
+        });
+        div.addEventListener('touchstart', () => { draggedPiece = piece.id; div.classList.add('dragging'); });
+        div.addEventListener('touchend', () => { setTimeout(() => { div.classList.remove('dragging'); draggedPiece = null; }, 100); });
+        piecesGrid.appendChild(div);
+    }
+}
+
+// ─── Render board ─────────────────────────────────────────
+function renderBoard() {
+    jigsawBoard.innerHTML = '';
+    jigsawBoard.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+    jigsawBoard.style.aspectRatio = '1 / 1';
+
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell rounded-lg aspect-square touch-feedback';
+            const pieceId = boardState[row][col];
+
+            if (pieceId !== null) {
+                const p = pieces.find(x => x.id === pieceId);
+                if (p) {
+                    // Use <img> inside cell — not backgroundImage — so no CSS pseudo-element covers it
+                    const img = document.createElement('img');
+                    img.src = p.imageData;
+                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;image-rendering:pixelated;';
+                    img.draggable = false;
+                    cell.appendChild(img);
+                    cell.classList.add('filled');
                 }
+            } else {
+                cell.classList.add('empty');
             }
-            
-            let loadedCount = 0;
-            pieces.forEach(piece => {
-                const canvas = document.createElement('canvas');
-                canvas.width = pieceWidth;
-                canvas.height = pieceHeight;
-                const ctx = canvas.getContext('2d');
-                const img = new Image();
-                img.onload = function() {
-                    ctx.drawImage(img, -piece.col * pieceWidth, -piece.row * pieceHeight, 600, 600);
-                    piece.imageData = canvas.toDataURL();
-                    loadedCount++;
-                    if (loadedCount === totalPieces) {
-                        shufflePiecesArray();
-                        renderPieces();
-                        renderBoard();
-                        piecesCard.classList.remove('hidden');
-                        boardCard.classList.remove('hidden');
-                        gameStats.classList.remove('hidden');
-                        totalPiecesSpan.textContent = totalPieces;
-                        updatePlacedCount();
-                        
-                        gsap.fromTo('#pieces-card', 
-                            { x: -50, opacity: 0 },
-                            { x: 0, opacity: 1, duration: 0.5, ease: 'backOut' }
-                        );
-                        gsap.fromTo('#board-card', 
-                            { x: 50, opacity: 0 },
-                            { x: 0, opacity: 1, duration: 0.5, ease: 'backOut', delay: 0.1 }
-                        );
-                    }
-                };
-                img.src = processedImageUrl;
+
+            cell.addEventListener('dragover', e => e.preventDefault());
+            cell.addEventListener('drop', e => {
+                e.preventDefault();
+                const id = draggedPiece !== null ? draggedPiece : parseInt(e.dataTransfer.getData('text/plain'));
+                if (id !== null && boardState[row][col] === null) {
+                    const p = pieces.find(x => x.id === id);
+                    if (p && !p.placed) placePiece(p.id, row, col);
+                }
             });
-        }
-        
-        function shufflePiecesArray() {
-            const pieceIndices = pieces.map((_, index) => index);
-            for (let i = pieceIndices.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [pieceIndices[i], pieceIndices[j]] = [pieceIndices[j], pieceIndices[i]];
-            }
-            shuffledPieces = pieceIndices;
-        }
-        
-        function renderPieces() {
-            piecesGrid.innerHTML = '';
-            const cols = Math.min(gridSize, window.innerWidth < 640 ? 3 : 4);
-            piecesGrid.style.gridTemplateColumns = `repeat(${cols}, minmax(70px, 1fr))`;
-            
-            for (let idx of shuffledPieces) {
-                const piece = pieces[idx];
-                if (!piece.placed) {
-                    const pieceDiv = document.createElement('div');
-                    pieceDiv.className = 'drag-piece rounded-lg shadow-lg overflow-hidden aspect-square touch-feedback';
-                    pieceDiv.style.backgroundImage = `url('${piece.imageData}')`;
-                    pieceDiv.style.backgroundSize = 'cover';
-                    pieceDiv.style.backgroundPosition = 'center';
-                    pieceDiv.draggable = true;
-                    pieceDiv.setAttribute('data-piece-id', piece.id);
-                    
-                    pieceDiv.addEventListener('dragstart', (e) => {
-                        draggedPiece = piece.id;
-                        e.dataTransfer.setData('text/plain', piece.id);
-                        pieceDiv.classList.add('dragging');
-                    });
-                    
-                    pieceDiv.addEventListener('dragend', () => {
-                        pieceDiv.classList.remove('dragging');
-                        draggedPiece = null;
-                    });
-                    
-                    pieceDiv.addEventListener('touchstart', (e) => {
-                        draggedPiece = piece.id;
-                        pieceDiv.classList.add('dragging');
-                    });
-                    
-                    pieceDiv.addEventListener('touchend', () => {
-                        setTimeout(() => {
-                            pieceDiv.classList.remove('dragging');
-                            draggedPiece = null;
-                        }, 100);
-                    });
-                    
-                    piecesGrid.appendChild(pieceDiv);
+            cell.addEventListener('click', () => {
+                if (draggedPiece !== null && boardState[row][col] === null) {
+                    const p = pieces.find(x => x.id === draggedPiece);
+                    if (p && !p.placed) { placePiece(draggedPiece, row, col); draggedPiece = null; }
                 }
-            }
+            });
+            jigsawBoard.appendChild(cell);
         }
-        
-        function renderBoard() {
-            jigsawBoard.innerHTML = '';
-            jigsawBoard.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
-            jigsawBoard.style.aspectRatio = '1 / 1';
-            
-            for (let row = 0; row < gridSize; row++) {
-                for (let col = 0; col < gridSize; col++) {
-                    const cell = document.createElement('div');
-                    const pieceId = boardState[row][col];
-                    const placedPiece = pieceId !== null ? pieces.find(p => p.id === pieceId) : null;
-                    
-                    cell.className = 'grid-cell rounded-lg shadow-sm aspect-square touch-feedback';
-                    
-                    if (placedPiece) {
-                        cell.style.backgroundImage = `url('${placedPiece.imageData}')`;
-                        cell.style.backgroundSize = 'cover';
-                        cell.style.backgroundPosition = 'center';
-                        cell.classList.add('filled');
-                    } else {
-                        cell.classList.add('empty');
-                    }
-                    
-                    cell.addEventListener('dragover', (e) => {
-                        e.preventDefault();
-                    });
-                    
-                    cell.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        const pieceId = draggedPiece !== null ? draggedPiece : parseInt(e.dataTransfer.getData('text/plain'));
-                        if (pieceId !== null && boardState[row][col] === null) {
-                            const piece = pieces.find(p => p.id === pieceId);
-                            if (piece && !piece.placed) {
-                                placePiece(piece.id, row, col);
-                            }
-                        }
-                    });
-                    
-                    cell.addEventListener('click', () => {
-                        if (draggedPiece !== null && boardState[row][col] === null) {
-                            const piece = pieces.find(p => p.id === draggedPiece);
-                            if (piece && !piece.placed) {
-                                placePiece(draggedPiece, row, col);
-                                draggedPiece = null;
-                            }
-                        }
-                    });
-                    
-                    jigsawBoard.appendChild(cell);
-                }
-            }
+    }
+}
+
+// ─── Place a piece ────────────────────────────────────────
+function placePiece(pieceId, row, col) {
+    const piece = pieces.find(p => p.id === pieceId);
+    if (!piece || piece.placed) return false;
+
+    // Only correct position allowed
+    if (piece.row !== row || piece.col !== col) return false;
+
+    boardState[row][col] = pieceId;
+    piece.placed = true;
+    updatePlacedCount();
+    renderPieces();
+    renderBoard();
+
+    // Trigger cartoon pop on the placed cell
+    const cells = jigsawBoard.querySelectorAll('.grid-cell');
+    const cell = cells[row * gridSize + col];
+    if (cell) {
+        cell.classList.add('just-placed');
+        // Burst particles
+        createCartoonBurst(cell);
+        setTimeout(() => cell.classList.remove('just-placed'), 700);
+    }
+
+    checkVictory();
+    return true;
+}
+
+// ─── Cartoon particle burst ───────────────────────────────
+function createCartoonBurst(element) {
+    const rect = element.getBoundingClientRect();
+    const colors = ['#f97316','#ea580c','#f59e0b','#eab308','#ff6b6b','#4ecdc4','#a855f7','#06b6d4','#22c55e'];
+    const shapes = ['50%', '0%', '30%']; // circle, square, rounded square
+
+    for (let i = 0; i < 18; i++) {
+        const p = document.createElement('div');
+        const size = 8 + Math.random() * 8;
+        p.style.cssText = `
+            position:fixed; z-index:9999; pointer-events:none;
+            width:${size}px; height:${size}px;
+            border-radius:${shapes[Math.floor(Math.random() * shapes.length)]};
+            background:${colors[Math.floor(Math.random() * colors.length)]};
+            left:${rect.left + rect.width / 2}px;
+            top:${rect.top + rect.height / 2}px;
+        `;
+        document.body.appendChild(p);
+        const angle = (i / 18) * Math.PI * 2;
+        const dist = 60 + Math.random() * 100;
+        gsap.to(p, {
+            x: Math.cos(angle) * dist,
+            y: Math.sin(angle) * dist,
+            rotation: Math.random() * 720 - 360,
+            scale: 0,
+            opacity: 0,
+            duration: 0.7 + Math.random() * 0.4,
+            ease: 'power2.out',
+            onComplete: () => p.remove()
+        });
+    }
+    // Star burst emoji pop
+    const star = document.createElement('div');
+    star.textContent = ['⭐','🌟','✨','💥'][Math.floor(Math.random()*4)];
+    star.style.cssText = `
+        position:fixed; z-index:9999; pointer-events:none; font-size:28px;
+        left:${rect.left + rect.width/2 - 14}px;
+        top:${rect.top + rect.height/2 - 14}px;
+    `;
+    document.body.appendChild(star);
+    gsap.to(star, { y: -60, opacity: 0, scale: 1.6, duration: 0.8, ease: 'power2.out', onComplete: () => star.remove() });
+}
+
+// ─── Shuffle / Reset ─────────────────────────────────────
+function shufflePieces() {
+    pieces.forEach(p => p.placed = false);
+    boardState = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
+    shufflePiecesArray();
+    const cont = document.getElementById('pieces-container');
+    cont.classList.add('shuffling');
+    setTimeout(() => cont.classList.remove('shuffling'), 600);
+    renderPieces(); renderBoard(); updatePlacedCount();
+    victoryMessage.classList.add('hidden');
+    gameStatus.textContent = 'Playing';
+    gameStatus.className = 'text-xs sm:text-sm font-semibold text-slate-300';
+    downloadBtn.disabled = true;
+}
+
+function resetBoard() {
+    pieces.forEach(p => p.placed = false);
+    boardState = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
+    renderPieces(); renderBoard(); updatePlacedCount();
+    victoryMessage.classList.add('hidden');
+    gameStatus.textContent = 'Playing';
+    gameStatus.className = 'text-xs sm:text-sm font-semibold text-slate-300';
+    downloadBtn.disabled = true;
+}
+
+function updatePlacedCount() {
+    placedCountSpan.textContent = pieces.filter(p => p.placed).length;
+}
+
+// ─── Victory ─────────────────────────────────────────────
+function checkVictory() {
+    if (!pieces.every(p => p.placed)) return;
+    gameStatus.textContent = 'COMPLETE!';
+    gameStatus.className = 'text-xs sm:text-sm font-bold text-green-400';
+    victoryMessage.classList.remove('hidden');
+    downloadBtn.disabled = false;
+    jigsawBoard.classList.add('victory-pulse');
+    setTimeout(() => jigsawBoard.classList.remove('victory-pulse'), 800);
+    confettiEffect();
+}
+
+function confettiEffect() {
+    const colors = ['#f97316','#ea580c','#f59e0b','#eab308','#ff6b6b','#4ecdc4','#a855f7'];
+    for (let i = 0; i < 100; i++) {
+        const p = document.createElement('div');
+        p.style.cssText = `
+            position:fixed; z-index:9999; pointer-events:none;
+            width:${6+Math.random()*8}px; height:${6+Math.random()*8}px;
+            border-radius:${Math.random()>0.5?'50%':'2px'};
+            background:${colors[Math.floor(Math.random()*colors.length)]};
+            left:${Math.random()*window.innerWidth}px; top:-10px;
+        `;
+        document.body.appendChild(p);
+        gsap.to(p, {
+            y: window.innerHeight + 100,
+            x: (Math.random()-0.5)*200,
+            rotation: Math.random()*720,
+            duration: 1+Math.random()*2,
+            ease: 'bounce.out',
+            onComplete: () => p.remove()
+        });
+    }
+}
+
+// ─── DOWNLOAD — manual canvas composite (no html2canvas) ──
+// This fixes the orange-overlay bug: we directly draw each placed
+// piece's imageData onto a canvas instead of screenshotting DOM.
+async function downloadImage() {
+    showToast('📸 Compositing your jigsaw...');
+    downloadBtn.disabled = true;
+    downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Building...';
+
+    try {
+        const size = 600;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const pw = size / gridSize, ph = size / gridSize;
+
+        // Dark background for unfilled cells
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, size, size);
+
+        // Draw a subtle grid
+        ctx.strokeStyle = 'rgba(249,115,22,0.25)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= gridSize; i++) {
+            ctx.beginPath(); ctx.moveTo(i * pw, 0); ctx.lineTo(i * pw, size); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i * ph); ctx.lineTo(size, i * ph); ctx.stroke();
         }
-        
-        function placePiece(pieceId, row, col) {
-            const piece = pieces.find(p => p.id === pieceId);
-            if (!piece || piece.placed) return false;
-            
-            if (piece.row === row && piece.col === col) {
-                boardState[row][col] = pieceId;
-                piece.placed = true;
-                updatePlacedCount();
-                renderPieces();
-                renderBoard();
-                
-                const cells = document.querySelectorAll('.grid-cell');
-                const index = row * gridSize + col;
-                if (cells[index]) {
-                    cells[index].classList.add('placed');
-                    createCartoonEffect(cells[index]);
-                    setTimeout(() => {
-                        cells[index].classList.remove('placed');
-                    }, 600);
-                }
-                
-                checkVictory();
-                return true;
-            }
-            return false;
-        }
-        
-        function createCartoonEffect(element) {
-            const rect = element.getBoundingClientRect();
-            const colors = ['#f97316', '#ea580c', '#f59e0b', '#eab308', '#ff6b6b', '#4ecdc4', '#a855f7', '#06b6d4'];
-            
-            for (let i = 0; i < 15; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'fixed pointer-events-none';
-                particle.style.width = '10px';
-                particle.style.height = '10px';
-                particle.style.borderRadius = '50%';
-                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                particle.style.left = rect.left + rect.width / 2 + 'px';
-                particle.style.top = rect.top + rect.height / 2 + 'px';
-                particle.style.position = 'fixed';
-                particle.style.zIndex = '9999';
-                document.body.appendChild(particle);
-                
-                const angle = (i / 15) * Math.PI * 2;
-                const velocityX = Math.cos(angle) * (Math.random() * 120 + 60);
-                const velocityY = Math.sin(angle) * (Math.random() * 120 + 60);
-                
-                gsap.to(particle, {
-                    x: velocityX,
-                    y: velocityY,
-                    rotation: Math.random() * 360,
-                    opacity: 0,
-                    scale: 0,
-                    duration: 0.8,
-                    ease: 'power2.out',
-                    onComplete: () => particle.remove()
+
+        // Draw each placed piece using its imageData directly
+        for (let row = 0; row < gridSize; row++) {
+            for (let col = 0; col < gridSize; col++) {
+                const pieceId = boardState[row][col];
+                if (pieceId === null) continue;
+                const piece = pieces.find(p => p.id === pieceId);
+                if (!piece || !piece.imageData) continue;
+
+                await new Promise(resolve => {
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.save();
+                        // Cartoon outline effect
+                        ctx.shadowColor = '#f97316';
+                        ctx.shadowBlur = 6;
+                        ctx.drawImage(img, col * pw, row * ph, pw, ph);
+                        // Inner border
+                        ctx.shadowBlur = 0;
+                        ctx.strokeStyle = '#f97316';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(col * pw + 1, row * ph + 1, pw - 2, ph - 2);
+                        ctx.restore();
+                        resolve();
+                    };
+                    img.onerror = resolve;
+                    img.src = piece.imageData;
                 });
             }
         }
-        
-        function shufflePieces() {
-            pieces.forEach(piece => {
-                piece.placed = false;
-            });
-            boardState = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
-            shufflePiecesArray();
-            
-            const container = document.getElementById('pieces-container');
-            container.classList.add('shuffling');
-            setTimeout(() => container.classList.remove('shuffling'), 600);
-            
-            renderPieces();
-            renderBoard();
-            updatePlacedCount();
-            victoryMessage.classList.add('hidden');
-            gameStatus.textContent = 'Playing';
-            gameStatus.classList.remove('text-green-600');
-            gameStatus.classList.add('text-slate-300');
-            downloadBtn.disabled = true;
-        }
-        
-        function resetBoard() {
-            pieces.forEach(piece => {
-                piece.placed = false;
-            });
-            boardState = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
-            renderPieces();
-            renderBoard();
-            updatePlacedCount();
-            victoryMessage.classList.add('hidden');
-            gameStatus.textContent = 'Playing';
-            gameStatus.classList.remove('text-green-600');
-            gameStatus.classList.add('text-slate-300');
-            downloadBtn.disabled = true;
-        }
-        
-        function updatePlacedCount() {
-            const placedCount = pieces.filter(p => p.placed).length;
-            placedCountSpan.textContent = placedCount;
-        }
-        
-        function checkVictory() {
-            const allPlaced = pieces.every(p => p.placed);
-            if (allPlaced) {
-                gameStatus.textContent = 'COMPLETE!';
-                gameStatus.classList.remove('text-slate-300');
-                gameStatus.classList.add('text-green-500', 'font-bold');
-                victoryMessage.classList.remove('hidden');
-                downloadBtn.disabled = false;
-                
-                const board = document.getElementById('jigsaw-board');
-                board.classList.add('victory-pulse');
-                setTimeout(() => board.classList.remove('victory-pulse'), 800);
-                confettiEffect();
-            }
-        }
-        
-        function confettiEffect() {
-            const colors = ['#f97316', '#ea580c', '#f59e0b', '#eab308', '#ff6b6b', '#4ecdc4', '#a855f7'];
-            for (let i = 0; i < 100; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'fixed w-2 sm:w-3 h-2 sm:h-3 rounded-full pointer-events-none';
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.left = Math.random() * window.innerWidth + 'px';
-                confetti.style.top = '-10px';
-                confetti.style.position = 'fixed';
-                confetti.style.zIndex = '9999';
-                document.body.appendChild(confetti);
-                
-                gsap.to(confetti, {
-                    y: window.innerHeight + 100,
-                    x: (Math.random() - 0.5) * 200,
-                    rotation: Math.random() * 360,
-                    duration: 1 + Math.random() * 2,
-                    ease: 'bounce.out',
-                    onComplete: () => confetti.remove()
-                });
-            }
-        }
-        
-        async function downloadImage() {
-            const board = document.getElementById('jigsaw-board');
-            
-            // Add downloading animation
-            board.classList.add('downloading');
-            
-            showToast('📸 Capturing your cartoon animated jigsaw...');
-            
-            try {
-                // Capture the board with all animations
-                const canvas = await html2canvas(board, {
-                    scale: 2,
-                    backgroundColor: '#1a1a2e',
-                    logging: false,
-                    useCORS: true,
-                    allowTaint: false,
-                    onclone: (clonedDoc, element) => {
-                        // Ensure animations are captured
-                        const clonedBoard = clonedDoc.getElementById('jigsaw-board');
-                        if (clonedBoard) {
-                            clonedBoard.style.animation = 'none';
-                        }
-                    }
-                });
-                
-                const link = document.createElement('a');
-                const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-                link.download = `growl-cartoon-jigsaw-${timestamp}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-                
-                showToast('✅ Cartoon jigsaw downloaded successfully! 🎨');
-            } catch (error) {
-                console.error('Download error:', error);
-                showToast('❌ Error capturing image. Please try again.', true);
-            } finally {
-                setTimeout(() => {
-                    board.classList.remove('downloading');
-                }, 500);
-            }
-        }
-        
-        gridSizeSlider.addEventListener('input', (e) => {
-            const val = parseInt(e.target.value);
-            gridSizeValue.textContent = val;
-            gridSizeValue2.textContent = val;
-        });
-        
-        applyGridBtn.addEventListener('click', () => {
-            gridSize = parseInt(gridSizeSlider.value);
-            totalPieces = gridSize * gridSize;
-            if (originalImageUrl) {
-                createPuzzle();
-            }
-        });
-        
-        shufflePiecesBtn.addEventListener('click', shufflePieces);
-        resetBoardBtn.addEventListener('click', resetBoard);
-        downloadBtn.addEventListener('click', downloadImage);
-        
-        window.addEventListener('resize', () => {
-            if (pieces.length > 0) {
-                renderPieces();
-            }
-        });
-    </script>
+
+        // Watermark
+        ctx.fillStyle = 'rgba(249,115,22,0.6)';
+        ctx.font = 'bold 18px Inter, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('GROWL', size - 8, size - 8);
+
+        const link = document.createElement('a');
+        link.download = `growl-cartoon-jigsaw-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast('✅ Cartoon jigsaw downloaded! 🎨');
+    } catch (err) {
+        console.error(err);
+        showToast('❌ Download failed. Please try again.', true);
+    } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = '<i class="fas fa-download mr-1 sm:mr-2 text-xs"></i>Download';
+    }
+}
+
+// ─── Event listeners ──────────────────────────────────────
+gridSizeSlider.addEventListener('input', e => {
+    const v = parseInt(e.target.value);
+    gridSizeValue.textContent = gridSizeValue2.textContent = v;
+});
+applyGridBtn.addEventListener('click', () => {
+    gridSize = parseInt(gridSizeSlider.value);
+    if (originalImageUrl) createPuzzle();
+});
+shufflePiecesBtn.addEventListener('click', shufflePieces);
+resetBoardBtn.addEventListener('click', resetBoard);
+downloadBtn.addEventListener('click', downloadImage);
+window.addEventListener('resize', () => { if (pieces.length) renderPieces(); });
+</script>
 </body>
 </html>
