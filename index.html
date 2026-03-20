@@ -235,14 +235,15 @@
         }
         @keyframes rotation { 100% { transform: rotate(360deg); } }
 
-        /* ── CARTOON FILTER on all piece images ── */
+        /* ── SHARP CARTOON DISPLAY FILTER ── */
         .drag-piece img,
         .grid-cell.filled img {
-            filter: saturate(1.6) contrast(1.15) brightness(1.05);
+            filter: contrast(1.08) brightness(1.04);
             transition: filter 0.2s ease;
+            image-rendering: auto;
         }
         .drag-piece:hover img {
-            filter: saturate(2.2) contrast(1.3) brightness(1.12) hue-rotate(8deg);
+            filter: contrast(1.15) brightness(1.1) saturate(1.2);
         }
     </style>
 </head>
@@ -281,7 +282,7 @@
             </div>
             <div id="loading" class="hidden mt-4 text-center">
                 <div class="loader mx-auto"></div>
-                <p class="text-slate-400 mt-2 text-xs sm:text-sm">🎨 Cartooning your image...</p>
+                <p class="text-slate-400 mt-2 text-xs sm:text-sm">🎨 Applying cartoon effect...</p>
             </div>
         </div>
     </div>
@@ -473,146 +474,104 @@ removeImageBtn.addEventListener('click', () => {
     downloadBtn.disabled = true;
 });
 
-// ─── COMIC BOOK CARTOON ENGINE ────────────────────────────
+// ─── CLEAN SHARP CARTOON ENGINE ──────────────────────────
+// No blur. Sharp edges. Vivid flat colors. Bold ink outlines.
 function applyCartoonToCanvas(canvas) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
+    const clamp = v => Math.min(255, Math.max(0, Math.round(v)));
 
-    // ── STEP 1: Fast 5×5 box blur on source (smooth flat areas, preserve edges later)
-    function boxBlur(data, passes) {
-        const tmp = new Uint8ClampedArray(data.length);
-        for (let p = 0; p < passes; p++) {
-            for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                    let r=0,g=0,b=0,cnt=0;
-                    for (let dy=-2; dy<=2; dy++) {
-                        for (let dx=-2; dx<=2; dx++) {
-                            const nx=Math.max(0,Math.min(w-1,x+dx));
-                            const ny=Math.max(0,Math.min(h-1,y+dy));
-                            const i=(ny*w+nx)*4;
-                            r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++;
-                        }
-                    }
-                    const i=(y*w+x)*4;
-                    tmp[i]=r/cnt; tmp[i+1]=g/cnt; tmp[i+2]=b/cnt; tmp[i+3]=255;
-                }
+    // ── 1. Grab original pixels (NO blur — keep sharpness)
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    const orig = new Uint8ClampedArray(d);
+
+    // ── 2. Convert to HSL, boost saturation, quantise lightness
+    function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r,g,b), min = Math.min(r,g,b);
+        let h2=0, s=0, l=(max+min)/2;
+        if (max !== min) {
+            const d2 = max - min;
+            s = l > 0.5 ? d2/(2-max-min) : d2/(max+min);
+            switch(max) {
+                case r: h2=((g-b)/d2+(g<b?6:0))/6; break;
+                case g: h2=((b-r)/d2+2)/6; break;
+                case b: h2=((r-g)/d2+4)/6; break;
             }
-            data.set(tmp);
         }
+        return [h2, s, l];
+    }
+    function hue2rgb(p, q, t) {
+        if(t<0)t+=1; if(t>1)t-=1;
+        if(t<1/6)return p+(q-p)*6*t;
+        if(t<1/2)return q;
+        if(t<2/3)return p+(q-p)*(2/3-t)*6;
+        return p;
+    }
+    function hslToRgb(h2, s, l) {
+        if(s===0) { const v=clamp(l*255); return [v,v,v]; }
+        const q = l<0.5 ? l*(1+s) : l+s-l*s;
+        const p = 2*l-q;
+        return [clamp(hue2rgb(p,q,h2+1/3)*255), clamp(hue2rgb(p,q,h2)*255), clamp(hue2rgb(p,q,h2-1/3)*255)];
     }
 
-    // Keep a copy of original for edge detection
-    const origData = ctx.getImageData(0, 0, w, h);
-    const orig = new Uint8ClampedArray(origData.data);
-
-    // Work on blurred version for color
-    const blurred = ctx.getImageData(0, 0, w, h);
-    boxBlur(blurred.data, 2);
-    const bd = blurred.data;
-
-    // ── STEP 2: Vivid saturation boost (×2.8)
-    for (let i = 0; i < bd.length; i += 4) {
-        const r=bd[i], g=bd[i+1], b=bd[i+2];
-        const gray = r*0.299 + g*0.587 + b*0.114;
-        bd[i]   = Math.min(255, Math.max(0, gray + (r-gray)*2.8));
-        bd[i+1] = Math.min(255, Math.max(0, gray + (g-gray)*2.8));
-        bd[i+2] = Math.min(255, Math.max(0, gray + (b-gray)*2.8));
+    // Toon lightness steps (3 bands: shadow / midtone / highlight)
+    function toonL(l) {
+        if (l < 0.25) return 0.15;
+        if (l < 0.55) return 0.48;
+        if (l < 0.80) return 0.72;
+        return 0.92;
     }
 
-    // ── STEP 3: Contrast crush (S-curve approximation)
-    for (let i = 0; i < bd.length; i += 4) {
-        for (let c = 0; c < 3; c++) {
-            let v = bd[i+c] / 255;
-            // S-curve: pull darks darker, brights brighter
-            v = v < 0.5
-                ? 2*v*v
-                : 1 - Math.pow(-2*v+2, 2)/2;
-            bd[i+c] = Math.min(255, Math.max(0, Math.round(v * 255 * 1.15)));
-        }
+    for (let i = 0; i < d.length; i += 4) {
+        const [h2, s, l] = rgbToHsl(d[i], d[i+1], d[i+2]);
+        // Boost saturation hard — flat vivid cartoon colors
+        const s2 = Math.min(1, s * 2.4 + 0.18);
+        // Snap lightness to 3 toon bands
+        const l2 = toonL(l);
+        const [r2, g2, b2] = hslToRgb(h2, s2, l2);
+        d[i] = r2; d[i+1] = g2; d[i+2] = b2;
     }
+    ctx.putImageData(imgData, 0, 0);
 
-    // ── STEP 4: Posterize to 4 flat cel-shading levels
-    const levels = 4;
-    const step = 255 / (levels - 1);
-    for (let i = 0; i < bd.length; i += 4) {
-        bd[i]   = Math.round(bd[i]   / step) * step;
-        bd[i+1] = Math.round(bd[i+1] / step) * step;
-        bd[i+2] = Math.round(bd[i+2] / step) * step;
-    }
+    // ── 3. Bold ink outlines via Sobel on ORIGINAL (sharp, no blur)
+    const outData = ctx.getImageData(0, 0, w, h);
+    const od = outData.data;
 
-    // ── STEP 5: Warm color grade (push reds/yellows, slightly reduce cyan)
-    for (let i = 0; i < bd.length; i += 4) {
-        bd[i]   = Math.min(255, bd[i]   + 12);   // warm reds
-        bd[i+1] = Math.min(255, bd[i+1] + 5);    // slight green warmth
-        bd[i+2] = Math.max(0,   bd[i+2] - 8);    // reduce cool blues
-    }
+    const gray = (x, y) => {
+        const px = (Math.max(0,Math.min(h-1,y))*w + Math.max(0,Math.min(w-1,x)))*4;
+        return orig[px]*0.299 + orig[px+1]*0.587 + orig[px+2]*0.114;
+    };
 
-    ctx.putImageData(blurred, 0, 0);
-
-    // ── STEP 6: Bold Sobel edge detection on the ORIGINAL (unblurred) image
-    //    → thick, crisp comic-book ink outlines
-    const cel = ctx.getImageData(0, 0, w, h);
-    const cd = cel.data;
-
-    const grayAt = (d, px) => d[px]*0.299 + d[px+1]*0.587 + d[px+2]*0.114;
-
-    // Build edge strength map first
-    const edgeMap = new Float32Array(w * h);
     for (let y = 1; y < h-1; y++) {
         for (let x = 1; x < w-1; x++) {
-            const tl=grayAt(orig,((y-1)*w+(x-1))*4), tc=grayAt(orig,((y-1)*w+x)*4), tr=grayAt(orig,((y-1)*w+(x+1))*4);
-            const ml=grayAt(orig,(y*w+(x-1))*4),                                      mr=grayAt(orig,(y*w+(x+1))*4);
-            const bl=grayAt(orig,((y+1)*w+(x-1))*4), bc=grayAt(orig,((y+1)*w+x)*4), br2=grayAt(orig,((y+1)*w+(x+1))*4);
-            const gx = -tl - 2*ml - bl + tr + 2*mr + br2;
-            const gy = -tl - 2*tc - tr + bl + 2*bc + br2;
-            edgeMap[y*w+x] = Math.sqrt(gx*gx + gy*gy);
-        }
-    }
-
-    // Dilate edges by 1px for thick ink look
-    const threshold = 28;
-    for (let y = 1; y < h-1; y++) {
-        for (let x = 1; x < w-1; x++) {
-            // Check 3×3 neighbourhood for any strong edge
-            let maxEdge = edgeMap[y*w+x];
-            for (let dy=-1; dy<=1; dy++)
-                for (let dx=-1; dx<=1; dx++)
-                    maxEdge = Math.max(maxEdge, edgeMap[(y+dy)*w+(x+dx)]);
-
-            if (maxEdge > threshold) {
+            const gx = -gray(x-1,y-1) - 2*gray(x-1,y) - gray(x-1,y+1)
+                      + gray(x+1,y-1) + 2*gray(x+1,y) + gray(x+1,y+1);
+            const gy = -gray(x-1,y-1) - 2*gray(x,y-1) - gray(x+1,y-1)
+                      + gray(x-1,y+1) + 2*gray(x,y+1) + gray(x+1,y+1);
+            const edge = Math.sqrt(gx*gx + gy*gy);
+            if (edge > 30) {
                 const idx = (y*w+x)*4;
-                const strength = Math.min(1, (maxEdge - threshold) / 100);
-                // Ink: pure dark (slight warm dark, not pure black — more comic-y)
-                cd[idx]   = Math.round(cd[idx]   * (1 - strength * 0.92) + 10 * strength);
-                cd[idx+1] = Math.round(cd[idx+1] * (1 - strength * 0.92) + 6  * strength);
-                cd[idx+2] = Math.round(cd[idx+2] * (1 - strength * 0.92) + 4  * strength);
-                cd[idx+3] = 255;
+                const s = Math.min(1, (edge-30)/110);
+                od[idx]   = clamp(od[idx]   * (1 - s*0.94));
+                od[idx+1] = clamp(od[idx+1] * (1 - s*0.94));
+                od[idx+2] = clamp(od[idx+2] * (1 - s*0.94));
             }
         }
     }
-    ctx.putImageData(cel, 0, 0);
+    ctx.putImageData(outData, 0, 0);
 
-    // ── STEP 7: Subtle halftone dot highlight layer (vintage comic feel)
-    ctx.globalCompositeOperation = 'overlay';
-    ctx.globalAlpha = 0.07;
-    const dotSpacing = 8;
-    ctx.fillStyle = '#ffffff';
-    for (let y = 0; y < h; y += dotSpacing) {
-        for (let x = (y/dotSpacing % 2 === 0 ? 0 : dotSpacing/2); x < w; x += dotSpacing) {
-            ctx.beginPath();
-            ctx.arc(x, y, 1.8, 0, Math.PI*2);
-            ctx.fill();
-        }
-    }
+    // ── 4. Subtle top-left specular sheen (gives depth without blur)
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.06;
+    const shine = ctx.createRadialGradient(w*0.2, h*0.15, 0, w*0.2, h*0.15, w*0.7);
+    shine.addColorStop(0, 'rgba(255,255,255,1)');
+    shine.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = shine;
+    ctx.fillRect(0, 0, w, h);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-
-    // ── STEP 8: Vignette (darken corners — adds drama)
-    const vig = ctx.createRadialGradient(w/2, h/2, h*0.3, w/2, h/2, h*0.85);
-    vig.addColorStop(0, 'rgba(0,0,0,0)');
-    vig.addColorStop(1, 'rgba(0,0,0,0.28)');
-    ctx.fillStyle = vig;
-    ctx.fillRect(0, 0, w, h);
 }
 
 // ─── Process image to 600×600 with cartoon effect ─────────
