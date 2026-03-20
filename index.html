@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <meta name="theme-color" content="#1a1a2e">
-    <title>GROWL - Side by Side Jigsaw Puzzle</title>
+    <title>GROWL - Puzzle Pieces vs Jigsaw Board</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- GSAP for animations -->
@@ -45,7 +45,7 @@
         
         /* Puzzle pieces container */
         .pieces-container {
-            max-height: 400px;
+            max-height: 500px;
             overflow-y: auto;
             overflow-x: hidden;
             scrollbar-width: thin;
@@ -254,13 +254,6 @@
             }
         }
         
-        /* Desktop optimizations */
-        @media (min-width: 1025px) {
-            .pieces-container {
-                max-height: 500px;
-            }
-        }
-        
         /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
@@ -326,186 +319,168 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
+        
+        /* Two column layout for main game area */
+        .game-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .game-area {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen">
-    <div class="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 max-w-full lg:max-w-7xl">
+    <div class="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 max-w-full lg:max-w-6xl">
         
         <!-- Header with GROWL -->
         <div class="text-center mb-6 sm:mb-8">
             <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 bg-clip-text text-transparent tracking-tight">
                 GROWL
             </h1>
-            <p class="text-slate-400 mt-1 sm:mt-2 text-xs sm:text-sm font-medium">match the pieces to complete the jigsaw</p>
+            <p class="text-slate-400 mt-1 sm:mt-2 text-xs sm:text-sm font-medium">drag pieces from left to right • complete the jigsaw</p>
         </div>
 
-        <!-- Main Grid Layout - Side by Side -->
-        <div class="grid lg:grid-cols-3 gap-6 lg:gap-8">
-            
-            <!-- Left Column - Upload & Puzzle Pieces -->
-            <div class="space-y-4 sm:space-y-6 order-2 lg:order-1">
-                
-                <!-- Upload Card -->
-                <div class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20">
-                    <div class="bg-gradient-to-r from-orange-600 to-orange-500 px-4 sm:px-6 py-3 sm:py-4">
-                        <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
-                            <i class="fas fa-cloud-upload-alt text-sm sm:text-base"></i>
-                            <span>Upload Image</span>
-                        </h2>
-                    </div>
-                    <div class="p-4 sm:p-6">
-                        <div id="drop-zone" class="drop-zone border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all">
-                            <i class="fas fa-image text-3xl sm:text-4xl md:text-5xl text-orange-500 mb-2 sm:mb-3 block"></i>
-                            <span class="text-slate-300 font-medium block mb-1 text-sm sm:text-base">Drag & drop your image here</span>
-                            <span class="text-slate-500 text-xs sm:text-sm">or click to browse</span>
-                            <input type="file" id="photo-upload" class="hidden" accept="image/jpeg, image/png, image/jpg">
-                        </div>
-                        
-                        <!-- Preview Section -->
-                        <div id="preview-container" class="mt-4 sm:mt-6 hidden">
-                            <div class="relative rounded-xl overflow-hidden bg-black/50">
-                                <img id="preview" class="w-full h-auto max-h-32 sm:max-h-48 object-contain" alt="Preview">
-                                <button id="remove-image" class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-red-700 transition shadow-lg">
-                                    <i class="fas fa-times text-xs sm:text-sm"></i>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Loading Indicator -->
-                        <div id="loading" class="hidden mt-4 text-center">
-                            <div class="loader mx-auto"></div>
-                            <p class="text-slate-400 mt-2 text-xs sm:text-sm">Processing image...</p>
-                        </div>
-                    </div>
+        <!-- Upload Section -->
+        <div class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 mb-6">
+            <div class="bg-gradient-to-r from-orange-600 to-orange-500 px-4 sm:px-6 py-3 sm:py-4">
+                <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                    <i class="fas fa-cloud-upload-alt text-sm sm:text-base"></i>
+                    <span>Upload Your Image</span>
+                </h2>
+            </div>
+            <div class="p-4 sm:p-6">
+                <div id="drop-zone" class="drop-zone border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all">
+                    <i class="fas fa-image text-3xl sm:text-4xl md:text-5xl text-orange-500 mb-2 sm:mb-3 block"></i>
+                    <span class="text-slate-300 font-medium block mb-1 text-sm sm:text-base">Drag & drop your image here</span>
+                    <span class="text-slate-500 text-xs sm:text-sm">or click to browse</span>
+                    <input type="file" id="photo-upload" class="hidden" accept="image/jpeg, image/png, image/jpg">
                 </div>
                 
-                <!-- Grid Size Control -->
-                <div id="grid-control" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
-                    <div class="bg-gradient-to-r from-purple-600 to-pink-600 px-4 sm:px-6 py-3 sm:py-4">
-                        <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
-                            <i class="fas fa-th text-sm sm:text-base"></i>
-                            <span>Grid Size</span>
-                        </h2>
-                    </div>
-                    <div class="p-4 sm:p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <span class="text-slate-300 font-medium text-sm sm:text-base">Grid: <span id="grid-size-value" class="text-orange-500 font-bold">3</span> x <span id="grid-size-value-2" class="text-orange-500 font-bold">3</span></span>
-                            <span class="text-slate-500 text-xs">(more pieces = harder)</span>
-                        </div>
-                        <input type="range" id="grid-size-slider" min="2" max="6" value="3" step="1" class="w-full">
-                        <div class="flex justify-between text-[10px] sm:text-xs text-slate-500 mt-2">
-                            <span>2x2</span>
-                            <span>3x3</span>
-                            <span>4x4</span>
-                            <span>5x5</span>
-                            <span>6x6</span>
-                        </div>
-                        <button id="apply-grid-btn" class="mt-4 w-full btn-primary text-white rounded-xl px-4 py-2 sm:py-2.5 font-semibold transition text-sm sm:text-base">
-                            <i class="fas fa-cogs mr-2"></i>Apply New Grid
+                <!-- Preview Section -->
+                <div id="preview-container" class="mt-4 sm:mt-6 hidden">
+                    <div class="relative rounded-xl overflow-hidden bg-black/50">
+                        <img id="preview" class="w-full h-auto max-h-32 sm:max-h-48 object-contain" alt="Preview">
+                        <button id="remove-image" class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-red-700 transition shadow-lg">
+                            <i class="fas fa-times text-xs sm:text-sm"></i>
                         </button>
                     </div>
                 </div>
                 
-                <!-- Puzzle Pieces Container -->
-                <div id="pieces-card" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
-                    <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
-                        <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
-                            <i class="fas fa-puzzle-piece text-sm sm:text-base"></i>
-                            <span>Puzzle Pieces</span>
-                            <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 py-0.5 sm:py-1 rounded-full ml-2 text-orange-300">drag to jigsaw</span>
-                        </h2>
-                    </div>
-                    <div id="pieces-container" class="pieces-container p-4 sm:p-6">
-                        <div id="pieces-grid" class="grid gap-2 sm:gap-3"></div>
-                    </div>
+                <!-- Loading Indicator -->
+                <div id="loading" class="hidden mt-4 text-center">
+                    <div class="loader mx-auto"></div>
+                    <p class="text-slate-400 mt-2 text-xs sm:text-sm">Processing image...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid Size Control -->
+        <div id="grid-control" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 mb-6 hidden">
+            <div class="bg-gradient-to-r from-purple-600 to-pink-600 px-4 sm:px-6 py-3 sm:py-4">
+                <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                    <i class="fas fa-th text-sm sm:text-base"></i>
+                    <span>Puzzle Difficulty</span>
+                </h2>
+            </div>
+            <div class="p-4 sm:p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-slate-300 font-medium text-sm sm:text-base">Grid Size: <span id="grid-size-value" class="text-orange-500 font-bold">3</span> x <span id="grid-size-value-2" class="text-orange-500 font-bold">3</span></span>
+                    <span class="text-slate-500 text-xs">(more pieces = harder)</span>
+                </div>
+                <input type="range" id="grid-size-slider" min="2" max="6" value="3" step="1" class="w-full">
+                <div class="flex justify-between text-[10px] sm:text-xs text-slate-500 mt-2">
+                    <span>2x2</span>
+                    <span>3x3</span>
+                    <span>4x4</span>
+                    <span>5x5</span>
+                    <span>6x6</span>
+                </div>
+                <button id="apply-grid-btn" class="mt-4 w-full btn-primary text-white rounded-xl px-4 py-2 sm:py-2.5 font-semibold transition text-sm sm:text-base">
+                    <i class="fas fa-cogs mr-2"></i>Apply New Grid
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Game Area - Puzzle Pieces vs Jigsaw Board (Opposite Each Other) -->
+        <div class="game-area">
+            
+            <!-- LEFT SIDE: Puzzle Pieces Container -->
+            <div id="pieces-card" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
+                <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
+                    <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                        <i class="fas fa-puzzle-piece text-sm sm:text-base"></i>
+                        <span>Puzzle Pieces</span>
+                        <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 py-0.5 sm:py-1 rounded-full ml-2 text-orange-300">drag from here</span>
+                    </h2>
+                </div>
+                <div id="pieces-container" class="pieces-container p-4 sm:p-6">
+                    <div id="pieces-grid" class="grid gap-2 sm:gap-3"></div>
                 </div>
             </div>
             
-            <!-- Middle Column - Jigsaw Board -->
-            <div class="order-1 lg:order-2">
-                <div class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20">
-                    <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
-                        <h2 class="text-white font-bold text-base sm:text-lg flex items-center justify-between">
-                            <span class="flex items-center gap-2"><i class="fas fa-th-large text-sm sm:text-base"></i> Jigsaw Board</span>
-                            <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 sm:px-3 py-1 rounded-full text-orange-300">build here</span>
-                        </h2>
-                    </div>
-                    <div class="p-4 sm:p-6 bg-black/20">
-                        <div id="jigsaw-board" class="grid gap-1.5 sm:gap-2 max-w-full mx-auto aspect-square"></div>
-                    </div>
+            <!-- RIGHT SIDE: Jigsaw Board -->
+            <div id="board-card" class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 hidden">
+                <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 sm:px-6 py-3 sm:py-4">
+                    <h2 class="text-white font-bold text-base sm:text-lg flex items-center justify-between">
+                        <span class="flex items-center gap-2"><i class="fas fa-th-large text-sm sm:text-base"></i> Jigsaw Board</span>
+                        <span class="text-[10px] sm:text-xs bg-orange-500/20 px-2 sm:px-3 py-1 rounded-full text-orange-300">drop here</span>
+                    </h2>
+                </div>
+                <div class="p-4 sm:p-6 bg-black/20">
+                    <div id="jigsaw-board" class="grid gap-1.5 sm:gap-2 max-w-full mx-auto aspect-square"></div>
                 </div>
             </div>
-            
-            <!-- Right Column - Reference Image -->
-            <div class="order-3">
-                <div class="dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-orange-500/20 sticky top-6">
-                    <div class="bg-gradient-to-r from-emerald-600 to-teal-600 px-4 sm:px-6 py-3 sm:py-4">
-                        <h2 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
-                            <i class="fas fa-image text-sm sm:text-base"></i>
-                            <span>Reference Image</span>
-                        </h2>
+        </div>
+        
+        <!-- Game Stats & Controls -->
+        <div id="game-stats" class="mt-6 hidden">
+            <div class="dark-card rounded-xl p-3 sm:p-4 border border-orange-500/20">
+                <div class="flex justify-between items-center mb-3 sm:mb-4">
+                    <div class="text-center flex-1">
+                        <p class="text-slate-400 text-[10px] sm:text-xs font-medium">PIECES PLACED</p>
+                        <p id="placed-count" class="text-xl sm:text-2xl font-bold text-orange-500">0</p>
                     </div>
-                    <div class="p-4 sm:p-6 bg-black/20">
-                        <div id="reference-container" class="flex flex-col items-center">
-                            <div id="reference-placeholder" class="w-full aspect-square bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center border-2 border-dashed border-orange-500/30">
-                                <div class="text-center">
-                                    <i class="fas fa-image text-4xl text-slate-600 mb-2 block"></i>
-                                    <p class="text-slate-500 text-sm">Upload an image to see reference</p>
-                                </div>
-                            </div>
-                            <img id="reference-image" class="reference-image w-full aspect-square object-cover rounded-xl hidden" alt="Reference">
-                            <div id="reference-info" class="mt-4 text-center hidden">
-                                <p class="text-slate-400 text-xs">Reference image - match your pieces to complete the puzzle</p>
-                            </div>
-                        </div>
+                    <div class="text-center flex-1 border-l border-r border-orange-500/20">
+                        <p class="text-slate-400 text-[10px] sm:text-xs font-medium">TOTAL PIECES</p>
+                        <p id="total-pieces" class="text-xl sm:text-2xl font-bold text-slate-300">0</p>
+                    </div>
+                    <div class="text-center flex-1">
+                        <p class="text-slate-400 text-[10px] sm:text-xs font-medium">STATUS</p>
+                        <p id="game-status" class="text-xs sm:text-sm font-semibold text-slate-300">Playing</p>
                     </div>
                 </div>
-                
-                <!-- Game Stats & Controls -->
-                <div id="game-stats" class="mt-6 hidden">
-                    <div class="dark-card rounded-xl p-3 sm:p-4 border border-orange-500/20">
-                        <div class="flex justify-between items-center mb-3 sm:mb-4">
-                            <div class="text-center flex-1">
-                                <p class="text-slate-400 text-[10px] sm:text-xs font-medium">PIECES PLACED</p>
-                                <p id="placed-count" class="text-xl sm:text-2xl font-bold text-orange-500">0</p>
-                            </div>
-                            <div class="text-center flex-1 border-l border-r border-orange-500/20">
-                                <p class="text-slate-400 text-[10px] sm:text-xs font-medium">TOTAL PIECES</p>
-                                <p id="total-pieces" class="text-xl sm:text-2xl font-bold text-slate-300">0</p>
-                            </div>
-                            <div class="text-center flex-1">
-                                <p class="text-slate-400 text-[10px] sm:text-xs font-medium">STATUS</p>
-                                <p id="game-status" class="text-xs sm:text-sm font-semibold text-slate-300">Playing</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-2 sm:gap-3">
-                            <button id="shuffle-pieces-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
-                                <i class="fas fa-random mr-1 sm:mr-2 text-xs sm:text-sm"></i>Shuffle
-                            </button>
-                            <button id="reset-board-btn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
-                                <i class="fas fa-sync-alt mr-1 sm:mr-2 text-xs sm:text-sm"></i>Reset
-                            </button>
-                            <button id="download-btn" class="flex-1 btn-primary text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm touch-feedback" disabled>
-                                <i class="fas fa-download mr-1 sm:mr-2 text-xs sm:text-sm"></i>Download
-                            </button>
-                        </div>
-                    </div>
+                <div class="flex gap-2 sm:gap-3">
+                    <button id="shuffle-pieces-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
+                        <i class="fas fa-random mr-1 sm:mr-2 text-xs sm:text-sm"></i>Shuffle Pieces
+                    </button>
+                    <button id="reset-board-btn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition text-xs sm:text-sm touch-feedback">
+                        <i class="fas fa-sync-alt mr-1 sm:mr-2 text-xs sm:text-sm"></i>Reset Board
+                    </button>
+                    <button id="download-btn" class="flex-1 btn-primary text-white rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm touch-feedback" disabled>
+                        <i class="fas fa-download mr-1 sm:mr-2 text-xs sm:text-sm"></i>Download
+                    </button>
                 </div>
-                
-                <!-- Victory Message -->
-                <div id="victory-message" class="hidden mt-4 text-center">
-                    <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl p-3 sm:p-4">
-                        <i class="fas fa-trophy text-2xl sm:text-3xl mb-1 sm:mb-2 block"></i>
-                        <p class="font-bold text-base sm:text-xl">PUZZLE COMPLETE!</p>
-                        <p class="text-[10px] sm:text-sm mt-0.5 sm:mt-1 text-green-100">Click download to save your masterpiece</p>
-                    </div>
-                </div>
+            </div>
+        </div>
+        
+        <!-- Victory Message -->
+        <div id="victory-message" class="hidden mt-4 text-center">
+            <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl p-3 sm:p-4">
+                <i class="fas fa-trophy text-2xl sm:text-3xl mb-1 sm:mb-2 block"></i>
+                <p class="font-bold text-base sm:text-xl">PUZZLE COMPLETE!</p>
+                <p class="text-[10px] sm:text-sm mt-0.5 sm:mt-1 text-green-100">Click download to save your masterpiece</p>
             </div>
         </div>
         
         <!-- Footer -->
         <div class="text-center mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-orange-500/20">
-            <p class="text-slate-500 text-[10px] sm:text-xs">GROWL • side by side • match pieces to the reference image</p>
+            <p class="text-slate-500 text-[10px] sm:text-xs">GROWL • drag puzzle pieces from left to right • match them to complete the jigsaw</p>
         </div>
     </div>
 
@@ -529,6 +504,7 @@
         const loadingDiv = document.getElementById('loading');
         const gridControl = document.getElementById('grid-control');
         const piecesCard = document.getElementById('pieces-card');
+        const boardCard = document.getElementById('board-card');
         const gameStats = document.getElementById('game-stats');
         const gridSizeSlider = document.getElementById('grid-size-slider');
         const gridSizeValue = document.getElementById('grid-size-value');
@@ -543,9 +519,6 @@
         const resetBoardBtn = document.getElementById('reset-board-btn');
         const downloadBtn = document.getElementById('download-btn');
         const victoryMessage = document.getElementById('victory-message');
-        const referenceImage = document.getElementById('reference-image');
-        const referencePlaceholder = document.getElementById('reference-placeholder');
-        const referenceInfo = document.getElementById('reference-info');
         
         // Handle drag & drop upload
         dropZone.addEventListener('dragover', (e) => {
@@ -584,13 +557,6 @@
                 originalImageUrl = event.target.result;
                 preview.src = originalImageUrl;
                 previewContainer.classList.remove('hidden');
-                
-                // Update reference image
-                referenceImage.src = originalImageUrl;
-                referenceImage.classList.remove('hidden');
-                referencePlaceholder.classList.add('hidden');
-                referenceInfo.classList.remove('hidden');
-                
                 loadingDiv.classList.add('hidden');
                 gridControl.classList.remove('hidden');
                 processImage();
@@ -604,17 +570,13 @@
             previewContainer.classList.add('hidden');
             gridControl.classList.add('hidden');
             piecesCard.classList.add('hidden');
+            boardCard.classList.add('hidden');
             gameStats.classList.add('hidden');
             photoUpload.value = '';
             piecesGrid.innerHTML = '';
             jigsawBoard.innerHTML = '';
             victoryMessage.classList.add('hidden');
             downloadBtn.disabled = true;
-            
-            // Hide reference image
-            referenceImage.classList.add('hidden');
-            referencePlaceholder.classList.remove('hidden');
-            referenceInfo.classList.add('hidden');
         });
         
         function processImage() {
@@ -669,9 +631,20 @@
                         renderPieces();
                         renderBoard();
                         piecesCard.classList.remove('hidden');
+                        boardCard.classList.remove('hidden');
                         gameStats.classList.remove('hidden');
                         totalPiecesSpan.textContent = totalPieces;
                         updatePlacedCount();
+                        
+                        // Animate entrance
+                        gsap.fromTo('#pieces-card', 
+                            { x: -50, opacity: 0 },
+                            { x: 0, opacity: 1, duration: 0.5, ease: 'backOut' }
+                        );
+                        gsap.fromTo('#board-card', 
+                            { x: 50, opacity: 0 },
+                            { x: 0, opacity: 1, duration: 0.5, ease: 'backOut', delay: 0.1 }
+                        );
                     }
                 };
                 img.src = processedImageUrl;
