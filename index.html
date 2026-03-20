@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartoon Photo Puzzle</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #f0f2f5; }
+        h1 { color: #333; }
+        
+        #puzzle-board {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            grid-template-rows: repeat(3, 120px);
+            gap: 5px;
+            width: 370px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .piece {
+            width: 120px;
+            height: 120px;
+            background-image: url('https://picsum.photos/id/1084/400/400?grayscale'); /* Example Image */
+            background-size: 360px 360px; /* 3 times the piece size */
+            cursor: pointer;
+            border-radius: 4px;
+            transition: transform 0.2s, border 0.2s;
+        }
+
+        .piece:hover { transform: scale(1.02); z-index: 10; border: 2px solid #007bff; }
+        .selected { border: 3px solid #ff4757; transform: scale(1.05); }
+        
+        button {
+            padding: 10px 25px;
+            font-size: 16px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Cartoon Animation Puzzle</h1>
+    <div id="puzzle-board"></div>
+    <br>
+    <button onclick="shuffle()">Shuffle Pieces</button>
+
+</body>
